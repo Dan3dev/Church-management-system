@@ -231,7 +231,7 @@ function App() {
   const addTransaction = (newTransaction: Omit<FinancialTransaction, 'id'>) => {
     const transaction: FinancialTransaction = {
       ...newTransaction,
-      id: Date.now().toString()
+      id: Date.now().toString(),
       accountId: newTransaction.accountId || accounts[0]?.id || '1'
     };
     setTransactions([...transactions, transaction]);
