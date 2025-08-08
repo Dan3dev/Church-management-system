@@ -436,17 +436,7 @@ function App() {
   };
   // Quick actions handler
   const handleQuickAction = (action: string) => {
-    switch (action) {
-      case 'add-member':
-        setActiveTab('members');
-        break;
-      case 'record-attendance':
-        setActiveTab('attendance');
-        break;
-      case 'add-transaction':
-        setActiveTab('finance');
-        break;
-    }
+    setActiveTab(action);
   };
 
   const renderActiveComponent = () => {
