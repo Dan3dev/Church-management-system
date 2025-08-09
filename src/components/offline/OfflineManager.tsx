@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wifi, WifiOff, Sync, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Wifi, WifiOff, FolderSync as Sync, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { OfflineAction } from '../../types';
 
 interface OfflineManagerProps {
