@@ -66,6 +66,34 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
 
   const netIncome = totalIncome - totalExpenses;
 
+  // Enhanced financial analytics
+  const monthlyTrend = () => {
+    const last6Months = [];
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const monthStr = date.toISOString().slice(0, 7);
+      
+      const income = transactions
+        .filter(t => t.type === 'Income' && t.date.startsWith(monthStr))
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const expenses = transactions
+        .filter(t => t.type === 'Expense' && t.date.startsWith(monthStr))
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      last6Months.push({
+        month: date.toLocaleDateString('en-US', { month: 'short' }),
+        income,
+        expenses,
+        net: income - expenses
+      });
+    }
+    return last6Months;
+  };
+
+  const trendData = monthlyTrend();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -261,8 +289,35 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
       {/* Transactions List */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+            <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 text-sm">
+              <span>Export CSV</span>
+            </button>
+          </div>
         </div>
+        
+        {/* Financial Trend Chart */}
+        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+          <h4 className="font-medium text-gray-900 mb-3">6-Month Financial Trend</h4>
+          <div className="grid grid-cols-6 gap-2">
+            {trendData.map((month, index) => (
+              <div key={index} className="text-center">
+                <div className="text-xs text-gray-500 mb-1">{month.month}</div>
+                <div className="space-y-1">
+                  <div className={`h-2 rounded ${month.income > 0 ? 'bg-green-500' : 'bg-gray-200'}`} 
+                       style={{ width: `${Math.min((month.income / 5000) * 100, 100)}%` }}></div>
+                  <div className={`h-2 rounded ${month.expenses > 0 ? 'bg-red-500' : 'bg-gray-200'}`} 
+                       style={{ width: `${Math.min((month.expenses / 5000) * 100, 100)}%` }}></div>
+                </div>
+                <div className={`text-xs font-medium mt-1 ${month.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${Math.abs(month.net).toLocaleString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
         <div className="divide-y divide-gray-200">
           {filteredTransactions
             .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

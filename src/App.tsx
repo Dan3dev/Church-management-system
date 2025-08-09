@@ -24,6 +24,12 @@ import DocumentManager from './components/documents/DocumentManager';
 import UserManagement from './components/users/UserManagement';
 import ProfilePage from './components/profile/ProfilePage';
 import Settings from './components/settings/Settings';
+import AIInsights from './components/ai/AIInsights';
+import IntegrationHub from './components/integrations/IntegrationHub';
+import LanguageManager from './components/localization/LanguageManager';
+import CurrencyManager from './components/currency/CurrencyManager';
+import OfflineManager from './components/offline/OfflineManager';
+import { useOffline } from './hooks/useOffline';
 import { 
   Member, 
   AttendanceRecord, 
@@ -52,9 +58,12 @@ import {
 
 function App() {
   const { user, loading } = useAuth();
+  const { isOnline, offlineActions, addOfflineAction, syncOfflineActions } = useOffline();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [baseCurrency, setBaseCurrency] = useState('USD');
   const [members, setMembers] = useState<Member[]>(mockMembers);
   const [families, setFamilies] = useState<Family[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
@@ -434,6 +443,38 @@ function App() {
   const deleteUser = (id: string) => {
     setUsers(users.filter(u => u.id !== id));
   };
+
+  // Offline action handler
+  const handleOfflineAction = (action: any) => {
+    if (!isOnline) {
+      addOfflineAction(action);
+      return;
+    }
+    // Execute action immediately if online
+    executeAction(action);
+  };
+
+  const executeAction = (action: any) => {
+    // Execute the actual action based on type
+    switch (action.type) {
+      case 'create':
+        if (action.entity === 'member') addMember(action.data);
+        if (action.entity === 'event') addEvent(action.data);
+        break;
+      case 'update':
+        if (action.entity === 'member') updateMember(action.id, action.data);
+        break;
+      case 'delete':
+        if (action.entity === 'member') deleteMember(action.id);
+        break;
+    }
+  };
+
+  const handleSync = async (syncedActions: any[]) => {
+    // Process synced actions
+    syncedActions.forEach(action => executeAction(action));
+  };
+
   // Quick actions handler
   const handleQuickAction = (action: string) => {
     setActiveTab(action);
@@ -621,6 +662,35 @@ function App() {
             onUpdateSettings={(settings) => console.log('Settings updated:', settings)}
           />
         );
+      case 'ai-insights':
+        return (
+          <AIInsights 
+            members={members}
+            transactions={transactions}
+            attendance={attendance}
+            giving={giving}
+          />
+        );
+      case 'integrations':
+        return (
+          <IntegrationHub 
+            onConnect={(integration) => console.log('Integration connected:', integration)}
+          />
+        );
+      case 'languages':
+        return (
+          <LanguageManager 
+            currentLanguage={currentLanguage}
+            onLanguageChange={setCurrentLanguage}
+          />
+        );
+      case 'currencies':
+        return (
+          <CurrencyManager 
+            baseCurrency={baseCurrency}
+            onBaseCurrencyChange={setBaseCurrency}
+          />
+        );
       default:
         return <Dashboard members={members} attendance={attendance} transactions={transactions} events={events} onQuickAction={handleQuickAction} />;
     }
@@ -656,6 +726,12 @@ function App() {
           />
         )}
       </div>
+      
+      {/* Offline Manager */}
+      <OfflineManager 
+        isOnline={isOnline}
+        onSync={handleSync}
+      />
     </Router>
   );
 }

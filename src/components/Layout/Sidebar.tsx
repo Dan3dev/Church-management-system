@@ -21,7 +21,11 @@ import {
   UserCircle,
   Shield,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  Zap,
+  Globe,
+  DollarSign
 } from 'lucide-react';
 import { signOut } from '../../config/supabase';
 
@@ -52,6 +56,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange, isCollapsed, 
     { id: 'documents', label: 'Documents', icon: FileText, category: 'admin' },
     { id: 'reports', label: 'Reports', icon: BarChart3, category: 'admin' },
     { id: 'users', label: 'User Management', icon: Shield, category: 'admin' },
+    { id: 'ai-insights', label: 'AI Insights', icon: Brain, category: 'admin' },
+    { id: 'integrations', label: 'Integrations', icon: Zap, category: 'admin' },
+    { id: 'languages', label: 'Languages', icon: Globe, category: 'admin' },
+    { id: 'currencies', label: 'Currencies', icon: DollarSign, category: 'admin' },
     { id: 'profile', label: 'Profile', icon: UserCircle, category: 'user' },
     { id: 'settings', label: 'Settings', icon: Settings, category: 'user' },
   ];

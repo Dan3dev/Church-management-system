@@ -1194,6 +1194,135 @@ export interface SystemSettings {
   updatedAt: string;
 }
 
+export interface AIInsight {
+  id: string;
+  type: 'prediction' | 'recommendation' | 'alert' | 'trend';
+  title: string;
+  description: string;
+  confidence: number;
+  category: 'membership' | 'finance' | 'attendance' | 'giving' | 'engagement';
+  data: any;
+  actionable: boolean;
+  actions?: AIAction[];
+  createdAt: string;
+  expiresAt?: string;
+  dismissed: boolean;
+}
+
+export interface AIAction {
+  id: string;
+  label: string;
+  type: 'navigate' | 'create' | 'update' | 'notify';
+  target?: string;
+  data?: any;
+}
+
+export interface OfflineAction {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  entity: string;
+  data: any;
+  timestamp: string;
+  synced: boolean;
+  error?: string;
+}
+
+export interface CloudStorage {
+  id: string;
+  provider: 'google-drive' | 'dropbox' | 'onedrive';
+  isConnected: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  folderPath?: string;
+  autoSync: boolean;
+  lastSync?: string;
+  syncErrors?: string[];
+}
+
+export interface CalendarIntegration {
+  id: string;
+  provider: 'google' | 'outlook';
+  isConnected: boolean;
+  calendarId?: string;
+  syncEvents: boolean;
+  syncDirection: 'one-way' | 'two-way';
+  lastSync?: string;
+  syncErrors?: string[];
+}
+
+export interface CommunicationIntegration {
+  id: string;
+  provider: 'slack' | 'teams' | 'discord';
+  isConnected: boolean;
+  webhookUrl?: string;
+  channelId?: string;
+  autoNotifications: boolean;
+  notificationTypes: string[];
+  lastUsed?: string;
+}
+
+export interface WebhookEndpoint {
+  id: string;
+  name: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  secret?: string;
+  headers?: { [key: string]: string };
+  retryAttempts: number;
+  lastTriggered?: string;
+  successCount: number;
+  failureCount: number;
+  createdAt: string;
+}
+
+export interface APIKey {
+  id: string;
+  name: string;
+  key: string;
+  permissions: string[];
+  isActive: boolean;
+  expiresAt?: string;
+  lastUsed?: string;
+  usageCount: number;
+  rateLimit?: number;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Language {
+  code: string;
+  name: string;
+  nativeName: string;
+  isRTL: boolean;
+  isActive: boolean;
+  completeness: number;
+}
+
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+  exchangeRate: number;
+  isBaseCurrency: boolean;
+  lastUpdated: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'info' | 'warning' | 'error' | 'success' | 'reminder';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  actionUrl?: string;
+  actionText?: string;
+  expiryDate?: string;
+  priority: 'low' | 'medium' | 'high';
+  category: string;
+}
+
 export interface Backup {
   id: string;
   name: string;
