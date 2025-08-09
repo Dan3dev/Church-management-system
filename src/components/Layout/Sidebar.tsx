@@ -24,8 +24,7 @@ import {
   ChevronRight,
   Brain,
   Zap,
-  Globe,
-  DollarSign
+  Globe
 } from 'lucide-react';
 import { signOut } from '../../config/supabase';
 
