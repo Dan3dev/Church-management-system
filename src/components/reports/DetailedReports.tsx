@@ -1,1 +1,8 @@
-{"code":"rate-limited","message":"You have hit the rate limit. Please upgrade to keep chatting.","providerLimitHit":false,"isRetryable":true}
+import React from 'react';
+export default function DetailedREports() {
+  return(
+    <>
+    <p>Coming soon</p>
+    </>
+  )
+}
