@@ -16,6 +16,7 @@ import {
   Share2
 } from 'lucide-react';
 import { Member, AttendanceRecord, FinancialTransaction, Event, Giving, Account } from '../../types';
+import { useExport } from '../../hooks/useExport';
 
 interface DetailedReportsProps {
   members: Member[];
@@ -37,6 +38,7 @@ const DetailedReports: React.FC<DetailedReportsProps> = ({
   const [selectedReport, setSelectedReport] = useState('financial');
   const [dateRange, setDateRange] = useState({
     start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+  const { exportToCSV, exportToPDF, exporting } = useExport();
     end: new Date().toISOString().split('T')[0]
   });
   const [selectedAccount, setSelectedAccount] = useState<string>('all');
@@ -53,6 +55,114 @@ const DetailedReports: React.FC<DetailedReportsProps> = ({
     { id: 'comprehensive', label: 'Comprehensive Report', icon: FileText, description: 'Complete church overview report' }
   ];
 
+  // Export functions for each report type
+  const exportCurrentReport = () => {
+    switch (selectedReport) {
+      case 'membership':
+        exportMembershipReport();
+        break;
+      case 'financial':
+        exportFinancialReport();
+        break;
+      case 'attendance':
+        exportAttendanceReport();
+        break;
+      case 'giving':
+        exportGivingReport();
+        break;
+      case 'accounting':
+        exportAccountingReport();
+        break;
+      default:
+        exportOverviewReport();
+    }
+  };
+
+  const exportMembershipReport = () => {
+    const reportData = members.map(member => ({
+      'Name': `${member.firstName} ${member.lastName}`,
+      'Email': member.email,
+      'Phone': member.phone,
+      'Status': member.membershipStatus,
+      'Join Date': member.joinDate,
+      'Campus': member.campus,
+      'Ministry': member.ministry.join(', '),
+      'Role': member.role,
+      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    }));
+    exportToCSV(reportData, 'membership_report');
+  };
+
+  const exportFinancialReport = () => {
+    const reportData = transactions.map(transaction => ({
+      'Date': transaction.date,
+      'Type': transaction.type,
+      'Category': transaction.category,
+      'Amount': transaction.amount,
+      'Description': transaction.description,
+      'Payment Method': transaction.paymentMethod,
+      'Member': transaction.memberName || '',
+      'Campus': transaction.campus,
+      'Account': accounts.find(a => a.id === transaction.accountId)?.name || '',
+      'Tax Deductible': transaction.taxDeductible ? 'Yes' : 'No'
+    }));
+    exportToCSV(reportData, 'financial_report');
+  };
+
+  const exportAttendanceReport = () => {
+    const reportData = attendance.map(record => ({
+      'Date': record.date,
+      'Member': record.memberName,
+      'Service': record.service,
+      'Present': record.present ? 'Yes' : 'No',
+      'Campus': record.campus,
+      'Check-in Time': record.checkInTime || '',
+      'Late Arrival': record.lateArrival ? 'Yes' : 'No'
+    }));
+    exportToCSV(reportData, 'attendance_report');
+  };
+
+  const exportGivingReport = () => {
+    const reportData = giving.map(gift => ({
+      'Date': gift.date,
+      'Member': gift.memberName,
+      'Amount': gift.amount,
+      'Type': gift.type,
+      'Fund': gift.fund,
+      'Payment Method': gift.paymentMethod,
+      'Recurring': gift.recurring ? 'Yes' : 'No',
+      'Tax Deductible': gift.taxDeductible ? 'Yes' : 'No',
+      'Receipt Sent': gift.receiptSent ? 'Yes' : 'No'
+    }));
+    exportToCSV(reportData, 'giving_report');
+  };
+
+  const exportAccountingReport = () => {
+    const reportData = accounts.map(account => ({
+      'Account Name': account.name,
+      'Type': account.type,
+      'Current Balance': account.balance,
+      'Currency': account.currency,
+      'Opening Balance': account.openingBalance,
+      'Opening Date': account.openingDate,
+      'Bank': account.bankName || '',
+      'Status': account.isActive ? 'Active' : 'Inactive',
+      'Campus': account.campus
+    }));
+    exportToCSV(reportData, 'accounting_report');
+  };
+
+  const exportOverviewReport = () => {
+    const reportData = [
+      { 'Metric': 'Total Members', 'Value': members.length },
+      { 'Metric': 'Active Members', 'Value': members.filter(m => m.membershipStatus === 'Active').length },
+      { 'Metric': 'Total Income', 'Value': transactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0) },
+      { 'Metric': 'Total Expenses', 'Value': transactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0) },
+      { 'Metric': 'Total Giving', 'Value': giving.reduce((sum, g) => sum + g.amount, 0) },
+      { 'Metric': 'Average Attendance', 'Value': attendance.length > 0 ? Math.round((attendance.filter(a => a.present).length / attendance.length) * 100) : 0 }
+    ];
+    exportToCSV(reportData, 'overview_report');
+  };
   // Enhanced financial calculations
   const filteredTransactions = transactions.filter(t => {
     const transactionDate = new Date(t.date);
@@ -433,10 +543,46 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
             className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
           >
             <BarChart3 className="h-4 w-4" />
+  // Account Balance Summary for Accounting Report
+  const getAccountBalances = () => {
+    return accounts.map(account => ({
+      name: account.name,
+      type: account.type,
+      balance: account.balance,
+      currency: account.currency,
+      status: account.isActive ? 'Active' : 'Inactive'
+    }));
+  };
+
+  // Trial Balance Calculation
+  const getTrialBalance = () => {
+    const assetAccounts = accounts.filter(a => ['Bank', 'Cash', 'Investment'].includes(a.type));
+    const totalAssets = assetAccounts.reduce((sum, a) => sum + a.balance, 0);
+    
+    const income = transactions.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+    const expenses = transactions.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
+    
+    return {
+      assets: totalAssets,
+      income,
+      expenses,
+      netIncome: income - expenses
+    };
+  };
             <span>Excel</span>
           </button>
           <button
-            onClick={() => downloadReport('financial', 'csv')}
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-gray-900">Church Overview Report</h3>
+        <button
+          onClick={exportOverviewReport}
+          disabled={exporting}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
+      </div>
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Download className="h-4 w-4" />
@@ -445,6 +591,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
         </div>
       </div>
       
+              <p className="text-blue-200 text-sm">+{membershipStats.newThisMonth} this month</p>
       {/* Enhanced Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
@@ -455,6 +602,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
               <p className="text-green-200 text-sm">
                 {filteredTransactions.filter(t => t.type === 'Income').length} transactions
               </p>
+              <p className="text-green-200 text-sm">All time</p>
             </div>
             <TrendingUp className="h-12 w-12 text-green-200" />
           </div>
@@ -750,6 +898,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
           <div>
             <h5 className="font-medium text-gray-900 mb-4">Investing Activities</h5>
             <div className="space-y-3">
+              <p className="text-purple-200 text-sm">{attendanceStats.weeklyAverage}/week avg</p>
               <div className="flex justify-between">
                 <span className="text-gray-600">Equipment Purchases</span>
                 <span className="font-medium text-red-600">
@@ -760,8 +909,9 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                 <span className="text-gray-600">Building Improvements</span>
                 <span className="font-medium text-red-600">
                   -${filteredTransactions.filter(t => t.type === 'Expense' && t.category === 'Maintenance').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+              <p className="text-orange-200 text-sm">${Math.round(givingStats.averageGift).toLocaleString()} avg</p>
                 </span>
-              </div>
+            <DollarSign className="h-12 w-12 text-orange-200" />
             </div>
           </div>
 
@@ -771,7 +921,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
               <div className="flex justify-between">
                 <span className="text-gray-600">Special Offerings</span>
                 <span className="font-medium text-green-600">
-                  ${filteredTransactions.filter(t => t.type === 'Income' && t.category === 'Special Offering').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
+            <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
                 </span>
               </div>
               <div className="flex justify-between">
@@ -780,6 +930,62 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                   ${filteredTransactions.filter(t => t.type === 'Income' && t.category === 'Donations').reduce((sum, t) => sum + t.amount, 0).toLocaleString()}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">This Month</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <span className="text-gray-600">Income:</span>
+              <span className="font-semibold text-green-600">${financialStats.monthlyIncome.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Expenses:</span>
+              <span className="font-semibold text-red-600">${financialStats.monthlyExpenses.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between border-t pt-2">
+              <span className="font-medium text-gray-900">Net:</span>
+              <span className={`font-bold ${(financialStats.monthlyIncome - financialStats.monthlyExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ${(financialStats.monthlyIncome - financialStats.monthlyExpenses).toLocaleString()}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Account Summary</h4>
+          <div className="space-y-2">
+            {accounts.slice(0, 3).map(account => (
+              <div key={account.id} className="flex justify-between text-sm">
+                <span className="text-gray-600">{account.name}:</span>
+                <span className="font-medium">{account.currency} {account.balance.toLocaleString()}</span>
+              </div>
+            ))}
+            {accounts.length > 3 && (
+              <p className="text-xs text-gray-500">+{accounts.length - 3} more accounts</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-600">New Members:</span>
+              <span className="font-medium">{membershipStats.newThisMonth}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Events This Month:</span>
+              <span className="font-medium">{events.filter(e => e.date.startsWith(new Date().toISOString().slice(0, 7))).length}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Communications:</span>
+              <span className="font-medium">{communications.length}</span>
             </div>
           </div>
         </div>
@@ -867,7 +1073,17 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
           })}
         </div>
       </div>
-
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-gray-900">Membership Report</h3>
+        <button
+          onClick={exportMembershipReport}
+          disabled={exporting}
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
+      </div>
       {/* Membership Status Breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -885,6 +1101,10 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                     <span className="text-gray-700 font-medium">{status}</span>
                   </div>
                   <div className="text-right">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">New This Month</span>
+              <span className="font-semibold text-blue-600">{membershipStats.newThisMonth}</span>
+            </div>
                     <span className="font-bold text-gray-900">{count}</span>
                     <p className="text-xs text-gray-500">{percentage.toFixed(1)}%</p>
                   </div>
@@ -918,7 +1138,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
       </div>
     </div>
   );
-
+                <div key={index} className="text-sm hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -979,7 +1199,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
               value={selectedAccount}
               onChange={(e) => setSelectedAccount(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
+              <div key={index} className="flex items-center justify-between hover:bg-gray-50 p-2 rounded transition-colors">
               <option value="all">All Accounts</option>
               {accounts.map(account => (
                 <option key={account.id} value={account.id}>{account.name}</option>
@@ -991,7 +1211,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
             <select
               value={selectedCampus}
               onChange={(e) => setSelectedCampus(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              <div key={index} className="flex items-center justify-between hover:bg-gray-50 p-2 rounded transition-colors">
             >
               <option value="all">All Campuses</option>
               <option value="Main Campus">Main Campus</option>
@@ -1003,6 +1223,42 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Age Distribution */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4">Age Distribution</h4>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {[
+            { label: '0-17', min: 0, max: 17 },
+            { label: '18-30', min: 18, max: 30 },
+            { label: '31-50', min: 31, max: 50 },
+            { label: '51-70', min: 51, max: 70 },
+            { label: '70+', min: 71, max: 150 }
+          ].map(ageGroup => {
+            const count = members.filter(m => {
+              const age = Math.floor((new Date().getTime() - new Date(m.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+              return age >= ageGroup.min && age <= ageGroup.max;
+            }).length;
+            
+            return (
+              <div key={ageGroup.label} className="text-center p-4 bg-gray-50 rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">{count}</p>
+                <p className="text-sm text-gray-600">{ageGroup.label} years</p>
+              </div>
+            );
+          })}
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-gray-900">Attendance Report</h3>
+        <button
+          onClick={exportAttendanceReport}
+          disabled={exporting}
+          className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
+      </div>
       </div>
 
       {/* Report Type Selection */}
@@ -1020,6 +1276,10 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                     ? 'border-blue-500 bg-blue-50 shadow-lg'
                     : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
                 }`}
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Weekly Average</span>
+              <span className="font-semibold text-purple-600">{attendanceStats.weeklyAverage}</span>
+            </div>
               >
                 <div className={`p-3 rounded-lg w-fit mb-4 transition-all duration-300 ${
                   selectedReport === report.id ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-100'
@@ -1032,9 +1292,12 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                   selectedReport === report.id ? 'text-blue-700' : 'text-gray-900 group-hover:text-blue-700'
                 }`}>
                   {report.label}
-                </h4>
+                <div key={index} className="flex items-center justify-between text-sm hover:bg-gray-50 p-2 rounded transition-colors">
                 <p className="text-sm text-gray-600">{report.description}</p>
-              </button>
+                  <div className="text-right">
+                    <span className="font-medium">{percentage}%</span>
+                    <p className="text-xs text-gray-500">{presentCount}/{serviceAttendance.length}</p>
+                  </div>
             );
           })}
         </div>
@@ -1054,7 +1317,7 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
                 <p className="text-blue-700 font-medium">Total Records</p>
               </div>
               <div className="bg-green-50 rounded-lg p-6">
-                <p className="text-2xl font-bold text-green-600">
+                <div key={index} className="text-sm hover:bg-gray-50 p-2 rounded transition-colors cursor-pointer">
                   {attendance.length > 0 ? ((attendance.filter(a => a.present).length / attendance.length) * 100).toFixed(1) : 0}%
                 </p>
                 <p className="text-green-700 font-medium">Average Attendance</p>
@@ -1062,39 +1325,289 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
               <div className="bg-purple-50 rounded-lg p-6">
                 <p className="text-2xl font-bold text-purple-600">
                   {Array.from(new Set(attendance.map(a => a.service))).length}
+
+      {/* Attendance Trends */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4">Attendance Trends (Last 8 Weeks)</h4>
+        <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
+          {Array.from({ length: 8 }, (_, i) => {
+            const date = new Date();
+            date.setDate(date.getDate() - (i * 7));
+            const weekAttendance = attendance.filter(a => {
+              const attendanceDate = new Date(a.date);
+              const weekStart = new Date(date);
+              weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekEnd.getDate() + 6);
+              return attendanceDate >= weekStart && attendanceDate <= weekEnd;
+            });
+            const presentCount = weekAttendance.filter(a => a.present).length;
+            const percentage = weekAttendance.length > 0 ? (presentCount / weekAttendance.length) * 100 : 0;
+            
+            return (
+              <div key={i} className="text-center">
+                <div className="text-xs text-gray-500 mb-1">
+                  {date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </div>
+                <div className="h-16 bg-gray-200 rounded relative">
+                  <div 
+                    className="bg-blue-500 rounded absolute bottom-0 w-full transition-all duration-500"
+                    style={{ height: `${percentage}%` }}
+                  ></div>
+                </div>
+                <div className="text-xs font-medium mt-1">{Math.round(percentage)}%</div>
+              </div>
+            );
+          }).reverse()}
+        </div>
+      </div>
                 </p>
                 <p className="text-purple-700 font-medium">Service Types</p>
               </div>
+  const renderAccountingReport = () => {
+    const trialBalance = getTrialBalance();
+    const accountBalances = getAccountBalances();
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-900">Accounting Report</h3>
+          <button
+            onClick={exportAccountingReport}
+            disabled={exporting}
+            className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+          </button>
+        </div>
+
+        {/* Trial Balance */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Trial Balance</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <h5 className="font-medium text-gray-900 mb-3">Assets</h5>
+              <div className="space-y-2">
+                {accounts.filter(a => ['Bank', 'Cash', 'Investment'].includes(a.type)).map(account => (
+                  <div key={account.id} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{account.name}</span>
+                    <span className="font-medium">${account.balance.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="border-t pt-2 flex justify-between font-semibold">
+                  <span>Total Assets</span>
+                  <span className="text-blue-600">${trialBalance.assets.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h5 className="font-medium text-gray-900 mb-3">Income & Expenses</h5>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Income</span>
+                  <span className="font-medium text-green-600">${trialBalance.income.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Expenses</span>
+                  <span className="font-medium text-red-600">${trialBalance.expenses.toLocaleString()}</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between font-semibold">
+                  <span>Net Income</span>
+                  <span className={trialBalance.netIncome >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    ${trialBalance.netIncome.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Balances */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Account Balances</h4>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 text-sm font-medium text-gray-700">Account Name</th>
+                  <th className="text-left py-2 text-sm font-medium text-gray-700">Type</th>
+                  <th className="text-right py-2 text-sm font-medium text-gray-700">Balance</th>
+                  <th className="text-center py-2 text-sm font-medium text-gray-700">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {accountBalances.map((account, index) => (
+                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 text-sm text-gray-900">{account.name}</td>
+                    <td className="py-3 text-sm text-gray-600">{account.type}</td>
+                    <td className="py-3 text-sm text-right font-medium">
+                      {account.currency} {account.balance.toLocaleString()}
+                    </td>
+                    <td className="py-3 text-center">
+                      <span className={`px-2 py-1 text-xs rounded-full ${
+                        account.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {account.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Financial Health Indicators */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h4 className="text-lg font-semibold text-gray-900 mb-4">Financial Health Indicators</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600">
+                {financialStats.totalIncome > 0 ? ((financialStats.totalIncome - financialStats.totalExpenses) / financialStats.totalIncome * 100).toFixed(1) : 0}%
+              </p>
+              <p className="text-sm text-gray-600">Profit Margin</p>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <p className="text-2xl font-bold text-green-600">
+                {Math.round(trialBalance.assets / (financialStats.monthlyExpenses || 1))}
+              </p>
+              <p className="text-sm text-gray-600">Months of Reserves</p>
+            </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg">
+              <p className="text-2xl font-bold text-purple-600">
+                {givingStats.totalGiving > 0 ? (givingStats.totalGiving / financialStats.totalIncome * 100).toFixed(1) : 0}%
+              </p>
+              <p className="text-sm text-gray-600">Giving Ratio</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderGivingReport = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-gray-900">Giving Report</h3>
+        <button
+          onClick={exportGivingReport}
+          disabled={exporting}
+          className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-green-600">${givingStats.totalGiving.toLocaleString()}</p>
+            <p className="text-sm text-gray-500">Total Giving</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-blue-600">${Math.round(givingStats.averageGift).toLocaleString()}</p>
+            <p className="text-sm text-gray-500">Average Gift</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-purple-600">{givingStats.recurringGivers}</p>
+            <p className="text-sm text-gray-500">Recurring Givers</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="text-center">
+            <p className="text-2xl font-bold text-orange-600">${givingStats.monthlyGiving.toLocaleString()}</p>
+            <p className="text-sm text-gray-500">This Month</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Givers */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h4 className="text-lg font-semibold text-gray-900 mb-4">Top Givers</h4>
+        <div className="space-y-3">
+          {members.map(member => {
+            const memberGiving = giving.filter(g => g.memberId === member.id);
+            const total = memberGiving.reduce((sum, g) => sum + g.amount, 0);
+            return { ...member, totalGiving: total };
+          })
+          .filter(m => m.totalGiving > 0)
+          .sort((a, b) => b.totalGiving - a.totalGiving)
+          .slice(0, 10)
+          .map((member, index) => (
+            <div key={member.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-green-600 font-medium text-sm">#{index + 1}</span>
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">{member.firstName} {member.lastName}</p>
+                  <p className="text-sm text-gray-500">{giving.filter(g => g.memberId === member.id).length} gifts</p>
+                </div>
+              </div>
+              <span className="font-semibold text-green-600">${member.totalGiving.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
             </div>
           </div>
         )}
         {selectedReport === 'giving' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-900">Giving Analysis Report</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="flex space-x-3">
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+            <option value="quarter">This Quarter</option>
+            <option value="year">This Year</option>
+            <option value="all">All Time</option>
+          </select>
+          <button 
+            onClick={exportCurrentReport}
+            disabled={exporting}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
               <div className="bg-green-50 rounded-lg p-6">
-                <p className="text-2xl font-bold text-green-600">${giving.reduce((sum, g) => sum + g.amount, 0).toLocaleString()}</p>
-                <p className="text-green-700 font-medium">Total Giving</p>
+            <span>{exporting ? 'Exporting...' : 'Export Report'}</span>
+          </button>
+        </div>
               </div>
               <div className="bg-blue-50 rounded-lg p-6">
                 <p className="text-2xl font-bold text-blue-600">{givingAnalysis.totalGivers}</p>
                 <p className="text-blue-700 font-medium">Total Givers</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <p className="text-2xl font-bold text-purple-600">${givingAnalysis.averageGift.toFixed(0)}</p>
                 <p className="text-purple-700 font-medium">Average Gift</p>
               </div>
               <div className="bg-orange-50 rounded-lg p-6">
                 <p className="text-2xl font-bold text-orange-600">{givingAnalysis.recurringGivers}</p>
                 <p className="text-orange-700 font-medium">Recurring Givers</p>
-              </div>
+                className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 transition-all duration-200 hover:scale-105 ${
             </div>
-          </div>
+                    ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-lg'
         )}
         {selectedReport === 'ministry' && (
           <div className="space-y-6">
             <h3 className="text-xl font-semibold text-gray-900">Ministry Performance Report</h3>
-            <p className="text-gray-600">Ministry analytics and volunteer engagement metrics will be displayed here.</p>
+                <div className="text-center">
+                  <p className="font-medium text-sm">{report.label}</p>
+                  <p className="text-xs text-gray-500">{report.description}</p>
+                </div>
           </div>
         )}
         {selectedReport === 'comprehensive' && (
@@ -1107,9 +1620,22 @@ Active Ministries: ${Array.from(new Set(members.flatMap(m => m.ministry))).lengt
             </div>
           </div>
         )}
+        {selectedReport === 'giving' && renderGivingReport()}
+        {selectedReport === 'accounting' && renderAccountingReport()}
       </div>
     </div>
   );
 };
 
 export default DetailedReports;
+      <div className="flex items-center justify-between">
+        <h3 className="text-xl font-semibold text-gray-900">Financial Report</h3>
+        <button
+          onClick={exportFinancialReport}
+          disabled={exporting}
+          className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          <span>{exporting ? 'Exporting...' : 'Export CSV'}</span>
+        </button>
+      </div>

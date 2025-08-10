@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, TrendingUp, Users, DollarSign, AlertTriangle, CheckCircle, X, Lightbulb, Target } from 'lucide-react';
+import { Brain, TrendingUp, Users, DollarSign, AlertTriangle, CheckCircle, X, Lightbulb, Target, RefreshCw, Bell } from 'lucide-react';
 import { AIInsight, Member, FinancialTransaction, AttendanceRecord, Giving } from '../../types';
 
 interface AIInsightsProps {
@@ -7,18 +7,30 @@ interface AIInsightsProps {
   transactions: FinancialTransaction[];
   attendance: AttendanceRecord[];
   giving: Giving[];
+  onNotification?: (notification: any) => void;
 }
 
-const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendance, giving }) => {
+const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendance, giving, onNotification }) => {
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   useEffect(() => {
     generateInsights();
-  }, [members, transactions, attendance, giving]);
+    
+    // Auto-refresh insights every 5 minutes if enabled
+    if (autoRefresh) {
+      const interval = setInterval(generateInsights, 5 * 60 * 1000);
+      return () => clearInterval(interval);
+    }
+  }, [members, transactions, attendance, giving, autoRefresh]);
 
-  const generateInsights = () => {
+  const generateInsights = async () => {
     setLoading(true);
+    
+    // Simulate AI processing time
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     const newInsights: AIInsight[] = [];
 
     // Membership Growth Prediction
@@ -35,14 +47,15 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
         id: '1',
         type: 'prediction',
         title: 'Membership Growth Forecast',
-        description: `Based on current trends, you're projected to gain ${Math.round(growthRate)} new members this year. Consider expanding small group capacity.`,
+        description: `Based on current trends, you're projected to gain ${Math.round(growthRate)} new members this year. Consider expanding small group capacity and preparing for increased facility needs.`,
         confidence: 85,
         category: 'membership',
-        data: { growthRate, recentMembers: recentMembers.length },
+        data: { growthRate, recentMembers: recentMembers.length, projectedTotal: members.length + growthRate },
         actionable: true,
         actions: [
           { id: '1', label: 'View Small Groups', type: 'navigate', target: 'smallgroups' },
-          { id: '2', label: 'Plan Expansion', type: 'create', target: 'events' }
+          { id: '2', label: 'Plan Expansion', type: 'create', target: 'events' },
+          { id: '3', label: 'Review Capacity', type: 'navigate', target: 'campuses' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -65,14 +78,32 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
         id: '2',
         type: 'alert',
         title: 'Budget Deficit Alert',
-        description: `This month shows a deficit of $${Math.abs(netIncome).toLocaleString()}. Review expenses and consider fundraising initiatives.`,
+        description: `This month shows a deficit of $${Math.abs(netIncome).toLocaleString()}. Immediate action recommended: review expenses, consider fundraising initiatives, or adjust budget allocations.`,
         confidence: 95,
         category: 'finance',
-        data: { deficit: Math.abs(netIncome), income: monthlyIncome, expenses: monthlyExpenses },
+        data: { deficit: Math.abs(netIncome), income: monthlyIncome, expenses: monthlyExpenses, severity: 'high' },
         actionable: true,
         actions: [
           { id: '1', label: 'Review Expenses', type: 'navigate', target: 'finance' },
-          { id: '2', label: 'Plan Fundraiser', type: 'create', target: 'events' }
+          { id: '2', label: 'Plan Fundraiser', type: 'create', target: 'events' },
+          { id: '3', label: 'Budget Analysis', type: 'navigate', target: 'reports' }
+        ],
+        createdAt: new Date().toISOString(),
+        dismissed: false
+      });
+    } else if (netIncome > monthlyIncome * 0.3) {
+      newInsights.push({
+        id: '2b',
+        type: 'recommendation',
+        title: 'Surplus Investment Opportunity',
+        description: `Strong financial position with $${netIncome.toLocaleString()} surplus. Consider investing in ministry expansion, building improvements, or emergency fund growth.`,
+        confidence: 88,
+        category: 'finance',
+        data: { surplus: netIncome, percentage: (netIncome / monthlyIncome) * 100 },
+        actionable: true,
+        actions: [
+          { id: '1', label: 'Investment Options', type: 'navigate', target: 'accounts' },
+          { id: '2', label: 'Ministry Expansion', type: 'navigate', target: 'ministries' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -95,15 +126,21 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       newInsights.push({
         id: '3',
         type: 'recommendation',
-        title: 'Attendance Improvement Opportunity',
-        description: `Current attendance rate is ${attendanceRate.toFixed(1)}%. Consider implementing follow-up programs for absent members.`,
+        title: 'Attendance Improvement Strategy',
+        description: `Current attendance rate is ${attendanceRate.toFixed(1)}%. Implement targeted follow-up programs, improve service experience, and consider member engagement initiatives.`,
         confidence: 78,
         category: 'attendance',
-        data: { rate: attendanceRate, totalRecords: recentAttendance.length },
+        data: { 
+          rate: attendanceRate, 
+          totalRecords: recentAttendance.length,
+          absentMembers: recentAttendance.filter(a => !a.present).length,
+          recommendations: ['Follow-up calls', 'Service improvements', 'Engagement events']
+        },
         actionable: true,
         actions: [
           { id: '1', label: 'Setup Follow-up', type: 'navigate', target: 'communication' },
-          { id: '2', label: 'View Attendance', type: 'navigate', target: 'attendance' }
+          { id: '2', label: 'View Attendance', type: 'navigate', target: 'attendance' },
+          { id: '3', label: 'Plan Engagement Event', type: 'create', target: 'events' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -121,21 +158,31 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
 
     if (recentGiving.length > 0) {
       const recentAverage = recentGiving.reduce((sum, g) => sum + g.amount, 0) / recentGiving.length;
-      const trend = ((recentAverage - averageGiving) / averageGiving) * 100;
+      const trend = averageGiving > 0 ? ((recentAverage - averageGiving) / averageGiving) * 100 : 0;
 
       newInsights.push({
         id: '4',
         type: 'trend',
         title: 'Giving Trend Analysis',
-        description: `Giving has ${trend > 0 ? 'increased' : 'decreased'} by ${Math.abs(trend).toFixed(1)}% compared to historical average. ${trend > 0 ? 'Great momentum!' : 'Consider stewardship teaching.'}`,
+        description: `Giving has ${trend > 0 ? 'increased' : 'decreased'} by ${Math.abs(trend).toFixed(1)}% compared to historical average. ${trend > 0 ? 'Excellent stewardship momentum!' : 'Consider implementing stewardship education and giving campaigns.'}`,
         confidence: 82,
         category: 'giving',
-        data: { trend, recentAverage, historicalAverage: averageGiving },
-        actionable: trend < 0,
-        actions: trend < 0 ? [
+        data: { 
+          trend, 
+          recentAverage, 
+          historicalAverage: averageGiving,
+          trendDirection: trend > 0 ? 'positive' : 'negative',
+          impactLevel: Math.abs(trend) > 10 ? 'high' : 'moderate'
+        },
+        actionable: Math.abs(trend) > 5,
+        actions: trend < -5 ? [
           { id: '1', label: 'Plan Stewardship Series', type: 'create', target: 'sermons' },
-          { id: '2', label: 'Review Giving Reports', type: 'navigate', target: 'giving' }
-        ] : undefined,
+          { id: '2', label: 'Review Giving Reports', type: 'navigate', target: 'giving' },
+          { id: '3', label: 'Member Outreach', type: 'navigate', target: 'communication' }
+        ] : [
+          { id: '1', label: 'Celebrate Success', type: 'create', target: 'communication' },
+          { id: '2', label: 'Share Testimony', type: 'navigate', target: 'sermons' }
+        ],
         createdAt: new Date().toISOString(),
         dismissed: false
       });
@@ -158,15 +205,150 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
         id: '5',
         type: 'alert',
         title: 'Member Engagement Alert',
-        description: `${disengagedMembers.length} active members haven't attended in the past month. Consider reaching out for pastoral care.`,
+        description: `${disengagedMembers.length} active members haven't attended in the past month. Risk of member attrition detected. Immediate pastoral care and outreach recommended.`,
         confidence: 90,
         category: 'engagement',
-        data: { count: disengagedMembers.length, members: disengagedMembers.slice(0, 5) },
+        data: { 
+          count: disengagedMembers.length, 
+          members: disengagedMembers.slice(0, 5),
+          riskLevel: disengagedMembers.length > 10 ? 'high' : 'moderate',
+          suggestedActions: ['Personal calls', 'Home visits', 'Care packages']
+        },
         actionable: true,
         actions: [
           { id: '1', label: 'Send Follow-up', type: 'navigate', target: 'communication' },
-          { id: '2', label: 'Schedule Visits', type: 'create', target: 'events' }
+          { id: '2', label: 'Schedule Visits', type: 'create', target: 'events' },
+          { id: '3', label: 'Assign Pastoral Care', type: 'navigate', target: 'users' }
         ],
+        createdAt: new Date().toISOString(),
+        dismissed: false
+      });
+    }
+
+    // Ministry Participation Analysis
+    const membersWithoutMinistry = members.filter(m => 
+      m.membershipStatus === 'Active' && m.ministry.length === 0
+    );
+
+    if (membersWithoutMinistry.length > 0) {
+      newInsights.push({
+        id: '6',
+        type: 'recommendation',
+        title: 'Ministry Engagement Opportunity',
+        description: `${membersWithoutMinistry.length} active members are not involved in any ministry. Increase member engagement by connecting them with suitable ministry opportunities.`,
+        confidence: 75,
+        category: 'engagement',
+        data: { 
+          count: membersWithoutMinistry.length,
+          percentage: (membersWithoutMinistry.length / members.filter(m => m.membershipStatus === 'Active').length) * 100,
+          members: membersWithoutMinistry.slice(0, 3)
+        },
+        actionable: true,
+        actions: [
+          { id: '1', label: 'Ministry Fair', type: 'create', target: 'events' },
+          { id: '2', label: 'Personal Outreach', type: 'navigate', target: 'communication' },
+          { id: '3', label: 'View Ministries', type: 'navigate', target: 'ministries' }
+        ],
+        createdAt: new Date().toISOString(),
+        dismissed: false
+      });
+    }
+
+    // Seasonal Giving Prediction
+    const currentMonth = new Date().getMonth();
+    if (currentMonth === 10 || currentMonth === 11) { // November or December
+      const lastYearHoliday = giving.filter(g => {
+        const date = new Date(g.date);
+        return date.getMonth() === 11 && date.getFullYear() === new Date().getFullYear() - 1;
+      });
+      
+      if (lastYearHoliday.length > 0) {
+        const lastYearTotal = lastYearHoliday.reduce((sum, g) => sum + g.amount, 0);
+        newInsights.push({
+          id: '7',
+          type: 'prediction',
+          title: 'Holiday Giving Forecast',
+          description: `Based on last year's patterns, expect approximately $${(lastYearTotal * 1.1).toLocaleString()} in holiday giving. Prepare special campaigns and thanksgiving initiatives.`,
+          confidence: 72,
+          category: 'giving',
+          data: { 
+            lastYearTotal, 
+            projectedTotal: lastYearTotal * 1.1,
+            growthFactor: 1.1,
+            seasonalTrend: 'positive'
+          },
+          actionable: true,
+          actions: [
+            { id: '1', label: 'Plan Holiday Campaign', type: 'create', target: 'events' },
+            { id: '2', label: 'Prepare Communications', type: 'navigate', target: 'communication' }
+          ],
+          createdAt: new Date().toISOString(),
+          dismissed: false
+        });
+      }
+    }
+
+    // Volunteer Burnout Detection
+    const activeVolunteers = members.filter(m => m.ministry.length > 2);
+    if (activeVolunteers.length > 0) {
+      newInsights.push({
+        id: '8',
+        type: 'alert',
+        title: 'Volunteer Burnout Risk',
+        description: `${activeVolunteers.length} members are involved in 3+ ministries. Monitor for burnout and consider redistributing responsibilities to prevent volunteer fatigue.`,
+        confidence: 68,
+        category: 'engagement',
+        data: { 
+          count: activeVolunteers.length,
+          overcommittedMembers: activeVolunteers.map(m => ({
+            name: `${m.firstName} ${m.lastName}`,
+            ministryCount: m.ministry.length
+          }))
+        },
+        actionable: true,
+        actions: [
+          { id: '1', label: 'Review Assignments', type: 'navigate', target: 'volunteers' },
+          { id: '2', label: 'Recruit New Volunteers', type: 'navigate', target: 'members' }
+        ],
+        createdAt: new Date().toISOString(),
+        dismissed: false
+      });
+    }
+
+    // New Member Integration Success
+    const newMembersLastMonth = members.filter(m => {
+      const joinDate = new Date(m.joinDate);
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      return joinDate >= twoMonthsAgo && joinDate < oneMonthAgo;
+    });
+
+    const integratedNewMembers = newMembersLastMonth.filter(m => 
+      m.ministry.length > 0 || attendance.some(a => a.memberId === m.id && a.present)
+    );
+
+    if (newMembersLastMonth.length > 0) {
+      const integrationRate = (integratedNewMembers.length / newMembersLastMonth.length) * 100;
+      newInsights.push({
+        id: '9',
+        type: integrationRate > 70 ? 'trend' : 'recommendation',
+        title: 'New Member Integration Analysis',
+        description: `${integrationRate.toFixed(1)}% of new members from last month are actively engaged. ${integrationRate > 70 ? 'Excellent integration process!' : 'Consider improving new member onboarding and follow-up procedures.'}`,
+        confidence: 80,
+        category: 'membership',
+        data: { 
+          integrationRate,
+          totalNewMembers: newMembersLastMonth.length,
+          integratedCount: integratedNewMembers.length,
+          needsAttention: newMembersLastMonth.filter(m => !integratedNewMembers.includes(m))
+        },
+        actionable: integrationRate < 70,
+        actions: integrationRate < 70 ? [
+          { id: '1', label: 'Improve Onboarding', type: 'navigate', target: 'events' },
+          { id: '2', label: 'Follow-up Program', type: 'navigate', target: 'communication' }
+        ] : undefined,
         createdAt: new Date().toISOString(),
         dismissed: false
       });
@@ -174,17 +356,53 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
 
     setInsights(newInsights);
     setLoading(false);
+
+    // Send notifications for high-priority insights
+    const criticalInsights = newInsights.filter(i => 
+      i.type === 'alert' || (i.confidence > 85 && i.actionable)
+    );
+    
+    criticalInsights.forEach(insight => {
+      onNotification?.({
+        type: insight.type === 'alert' ? 'warning' : 'info',
+        title: 'New AI Insight',
+        message: insight.title,
+        category: 'ai-insights',
+        actionUrl: '/ai-insights'
+      });
+    });
   };
 
   const dismissInsight = (id: string) => {
     setInsights(insights.map(insight => 
       insight.id === id ? { ...insight, dismissed: true } : insight
     ));
+    
+    onNotification?.({
+      type: 'success',
+      title: 'Insight Dismissed',
+      message: 'AI insight has been dismissed',
+      category: 'ai-insights'
+    });
   };
 
-  const executeAction = (action: any) => {
+  const executeAction = (action: any, insight: AIInsight) => {
     console.log('Executing AI action:', action);
+    
+    onNotification?.({
+      type: 'info',
+      title: 'Action Executed',
+      message: `Navigating to ${action.label}`,
+      category: 'ai-insights'
+    });
+    
     // In a real app, this would trigger navigation or actions
+    if (action.type === 'navigate') {
+      // Simulate navigation
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('navigate', { detail: action.target }));
+      }, 100);
+    }
   };
 
   const getInsightIcon = (type: string) => {
@@ -207,7 +425,15 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
     }
   };
 
+  const getPriorityLevel = (insight: AIInsight) => {
+    if (insight.type === 'alert') return 'High';
+    if (insight.confidence > 85) return 'Medium';
+    return 'Low';
+  };
+
   const activeInsights = insights.filter(i => !i.dismissed);
+  const criticalInsights = activeInsights.filter(i => i.type === 'alert');
+  const actionableInsights = activeInsights.filter(i => i.actionable);
 
   return (
     <div className="space-y-6">
@@ -219,20 +445,88 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
             <p className="text-gray-600">Powered by machine learning analytics</p>
           </div>
         </div>
-        <button
-          onClick={generateInsights}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Brain className="h-4 w-4" />
-          <span>Refresh Insights</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">Auto-refresh</span>
+          </label>
+          <button
+            onClick={generateInsights}
+            disabled={loading}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>{loading ? 'Analyzing...' : 'Refresh Insights'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* AI Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-blue-100">
+              <Brain className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">{activeInsights.length}</p>
+            <p className="text-sm text-gray-500">Active Insights</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-red-100">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">{criticalInsights.length}</p>
+            <p className="text-sm text-gray-500">Critical Alerts</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-green-100">
+              <Target className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">{actionableInsights.length}</p>
+            <p className="text-sm text-gray-500">Actionable Items</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-purple-100">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">
+              {Math.round(activeInsights.reduce((sum, i) => sum + i.confidence, 0) / activeInsights.length) || 0}%
+            </p>
+            <p className="text-sm text-gray-500">Avg Confidence</p>
+          </div>
+        </div>
       </div>
 
       {loading ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center justify-center space-x-3">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-            <span className="text-gray-600">Analyzing data and generating insights...</span>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <div className="text-center">
+              <p className="text-gray-600 font-medium">Analyzing church data...</p>
+              <p className="text-sm text-gray-500">Generating AI-powered insights and predictions</p>
+            </div>
           </div>
         </div>
       ) : (
@@ -240,9 +534,10 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
           {activeInsights.map((insight) => {
             const Icon = getInsightIcon(insight.type);
             const color = getInsightColor(insight.type);
+            const priority = getPriorityLevel(insight);
             
             return (
-              <div key={insight.id} className={`bg-white rounded-xl shadow-sm border-l-4 border-${color}-500 p-6 hover:shadow-md transition-shadow`}>
+              <div key={insight.id} className={`bg-white rounded-xl shadow-sm border-l-4 border-${color}-500 p-6 hover:shadow-md transition-all duration-200 hover:-translate-y-1`}>
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4">
                     <div className={`p-3 rounded-lg bg-${color}-100`}>
@@ -257,15 +552,43 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
                         <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 capitalize">
                           {insight.type}
                         </span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          priority === 'High' ? 'bg-red-100 text-red-700' :
+                          priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {priority} Priority
+                        </span>
                       </div>
-                      <p className="text-gray-700 mb-4">{insight.description}</p>
+                      <p className="text-gray-700 mb-4 leading-relaxed">{insight.description}</p>
+                      
+                      {/* Data Visualization */}
+                      {insight.data && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                          <h5 className="font-medium text-gray-900 mb-2">Key Metrics:</h5>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                            {Object.entries(insight.data).map(([key, value]) => (
+                              <div key={key} className="flex justify-between">
+                                <span className="text-gray-600 capitalize">{key.replace(/([A-Z])/g, ' $1')}:</span>
+                                <span className="font-medium text-gray-900">
+                                  {typeof value === 'number' ? 
+                                    (key.includes('Rate') || key.includes('Percentage') ? `${value.toFixed(1)}%` : 
+                                     key.includes('Amount') || key.includes('Total') || key.includes('Income') || key.includes('Expense') ? `$${value.toLocaleString()}` :
+                                     value.toLocaleString()) : 
+                                    String(value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       
                       {insight.actions && insight.actions.length > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {insight.actions.map((action) => (
                             <button
                               key={action.id}
-                              onClick={() => executeAction(action)}
+                              onClick={() => executeAction(action, insight)}
                               className={`flex items-center space-x-2 px-3 py-2 text-sm rounded-lg bg-${color}-600 text-white hover:bg-${color}-700 transition-colors`}
                             >
                               <span>{action.label}</span>
@@ -292,9 +615,32 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
           <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Insights</h3>
-          <p className="text-gray-500">AI is analyzing your data. Check back later for personalized insights.</p>
+          <p className="text-gray-500 mb-4">AI is analyzing your data. Check back later for personalized insights.</p>
+          <button
+            onClick={generateInsights}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Generate New Insights
+          </button>
         </div>
       )}
+
+      {/* Insight Categories */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Insight Categories</h3>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          {['membership', 'finance', 'attendance', 'giving', 'engagement'].map(category => {
+            const categoryInsights = activeInsights.filter(i => i.category === category);
+            return (
+              <div key={category} className="text-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <p className="font-semibold text-gray-900 capitalize">{category}</p>
+                <p className="text-2xl font-bold text-blue-600">{categoryInsights.length}</p>
+                <p className="text-xs text-gray-500">insights</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };

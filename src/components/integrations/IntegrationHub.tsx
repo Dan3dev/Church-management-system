@@ -12,7 +12,12 @@ import {
   ExternalLink,
   Zap,
   Globe,
-  Shield
+  Shield,
+  RefreshCw,
+  Plus,
+  Trash2,
+  Eye,
+  Copy
 } from 'lucide-react';
 import { CloudStorage, CalendarIntegration, CommunicationIntegration, WebhookEndpoint, APIKey } from '../../types';
 
@@ -35,7 +40,8 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
 
   const [communicationIntegrations, setCommunicationIntegrations] = useState<CommunicationIntegration[]>([
     { id: '1', provider: 'slack', isConnected: false, autoNotifications: false, notificationTypes: [] },
-    { id: '2', provider: 'teams', isConnected: false, autoNotifications: false, notificationTypes: [] }
+    { id: '2', provider: 'teams', isConnected: false, autoNotifications: false, notificationTypes: [] },
+    { id: '3', provider: 'discord', isConnected: false, autoNotifications: false, notificationTypes: [] }
   ]);
 
   const [webhooks, setWebhooks] = useState<WebhookEndpoint[]>([]);
@@ -43,6 +49,7 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
 
   const [showWebhookForm, setShowWebhookForm] = useState(false);
   const [showAPIKeyForm, setShowAPIKeyForm] = useState(false);
+  const [syncing, setSyncing] = useState<string | null>(null);
 
   const [newWebhook, setNewWebhook] = useState<Omit<WebhookEndpoint, 'id' | 'successCount' | 'failureCount' | 'createdAt'>>({
     name: '',
@@ -68,19 +75,20 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
   ];
 
   const storageProviders = [
-    { id: 'google-drive', name: 'Google Drive', icon: '📁', color: 'blue' },
-    { id: 'dropbox', name: 'Dropbox', icon: '📦', color: 'blue' },
-    { id: 'onedrive', name: 'OneDrive', icon: '☁️', color: 'blue' }
+    { id: 'google-drive', name: 'Google Drive', icon: '📁', color: 'blue', description: 'Store documents in Google Drive' },
+    { id: 'dropbox', name: 'Dropbox', icon: '📦', color: 'blue', description: 'Sync files with Dropbox' },
+    { id: 'onedrive', name: 'OneDrive', icon: '☁️', color: 'blue', description: 'Microsoft OneDrive integration' }
   ];
 
   const calendarProviders = [
-    { id: 'google', name: 'Google Calendar', icon: '📅', color: 'red' },
-    { id: 'outlook', name: 'Outlook Calendar', icon: '📆', color: 'blue' }
+    { id: 'google', name: 'Google Calendar', icon: '📅', color: 'red', description: 'Sync events with Google Calendar' },
+    { id: 'outlook', name: 'Outlook Calendar', icon: '📆', color: 'blue', description: 'Microsoft Outlook calendar sync' }
   ];
 
   const communicationProviders = [
-    { id: 'slack', name: 'Slack', icon: '💬', color: 'purple' },
-    { id: 'teams', name: 'Microsoft Teams', icon: '👥', color: 'blue' }
+    { id: 'slack', name: 'Slack', icon: '💬', color: 'purple', description: 'Send notifications to Slack channels' },
+    { id: 'teams', name: 'Microsoft Teams', icon: '👥', color: 'blue', description: 'Integrate with Microsoft Teams' },
+    { id: 'discord', name: 'Discord', icon: '🎮', color: 'indigo', description: 'Connect with Discord servers' }
   ];
 
   const webhookEvents = [
@@ -94,36 +102,127 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
     'events.read', 'events.write', 'reports.read', 'system.admin'
   ];
 
-  const connectStorage = (providerId: string) => {
+  // Cloud Storage Functions
+  const connectStorage = async (providerId: string) => {
+    setSyncing(providerId);
+    
+    // Simulate OAuth flow
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     setCloudStorages(storages => 
       storages.map(storage => 
         storage.provider === providerId 
-          ? { ...storage, isConnected: true, lastSync: new Date().toISOString() }
+          ? { 
+              ...storage, 
+              isConnected: true, 
+              lastSync: new Date().toISOString(),
+              folderPath: '/ChurchHub',
+              autoSync: true
+            }
+          : storage
+      )
+    );
+    
+    setSyncing(null);
+    onConnect({ type: 'storage', provider: providerId, status: 'connected' });
+  };
+
+  const disconnectStorage = (providerId: string) => {
+    setCloudStorages(storages => 
+      storages.map(storage => 
+        storage.provider === providerId 
+          ? { ...storage, isConnected: false, autoSync: false }
           : storage
       )
     );
   };
 
-  const connectCalendar = (providerId: string) => {
+  const syncStorage = async (providerId: string) => {
+    setSyncing(providerId);
+    
+    // Simulate sync process
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    setCloudStorages(storages => 
+      storages.map(storage => 
+        storage.provider === providerId 
+          ? { ...storage, lastSync: new Date().toISOString() }
+          : storage
+      )
+    );
+    
+    setSyncing(null);
+  };
+
+  // Calendar Functions
+  const connectCalendar = async (providerId: string) => {
+    setSyncing(providerId);
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     setCalendarIntegrations(calendars => 
       calendars.map(calendar => 
         calendar.provider === providerId 
-          ? { ...calendar, isConnected: true, lastSync: new Date().toISOString() }
+          ? { 
+              ...calendar, 
+              isConnected: true, 
+              lastSync: new Date().toISOString(),
+              syncEvents: true,
+              calendarId: `church-${providerId}-calendar`
+            }
+          : calendar
+      )
+    );
+    
+    setSyncing(null);
+    onConnect({ type: 'calendar', provider: providerId, status: 'connected' });
+  };
+
+  const toggleCalendarSync = (providerId: string, syncEvents: boolean) => {
+    setCalendarIntegrations(calendars => 
+      calendars.map(calendar => 
+        calendar.provider === providerId 
+          ? { ...calendar, syncEvents }
           : calendar
       )
     );
   };
 
-  const connectCommunication = (providerId: string) => {
+  // Communication Functions
+  const connectCommunication = async (providerId: string) => {
+    setSyncing(providerId);
+    
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
     setCommunicationIntegrations(comms => 
       comms.map(comm => 
         comm.provider === providerId 
-          ? { ...comm, isConnected: true, lastUsed: new Date().toISOString() }
+          ? { 
+              ...comm, 
+              isConnected: true, 
+              lastUsed: new Date().toISOString(),
+              autoNotifications: true,
+              notificationTypes: ['member.created', 'event.created', 'system.alert']
+            }
+          : comm
+      )
+    );
+    
+    setSyncing(null);
+    onConnect({ type: 'communication', provider: providerId, status: 'connected' });
+  };
+
+  const toggleNotifications = (providerId: string, autoNotifications: boolean) => {
+    setCommunicationIntegrations(comms => 
+      comms.map(comm => 
+        comm.provider === providerId 
+          ? { ...comm, autoNotifications }
           : comm
       )
     );
   };
 
+  // Webhook Functions
   const addWebhook = (e: React.FormEvent) => {
     e.preventDefault();
     const webhook: WebhookEndpoint = {
@@ -142,8 +241,43 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
       retryAttempts: 3
     });
     setShowWebhookForm(false);
+    onConnect({ type: 'webhook', webhook, status: 'created' });
   };
 
+  const toggleWebhook = (id: string, isActive: boolean) => {
+    setWebhooks(webhooks.map(w => 
+      w.id === id ? { ...w, isActive } : w
+    ));
+  };
+
+  const deleteWebhook = (id: string) => {
+    setWebhooks(webhooks.filter(w => w.id !== id));
+  };
+
+  const testWebhook = async (webhook: WebhookEndpoint) => {
+    try {
+      // Simulate webhook test
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setWebhooks(webhooks.map(w => 
+        w.id === webhook.id 
+          ? { ...w, successCount: w.successCount + 1, lastTriggered: new Date().toISOString() }
+          : w
+      ));
+      
+      alert('Webhook test successful!');
+    } catch (error) {
+      setWebhooks(webhooks.map(w => 
+        w.id === webhook.id 
+          ? { ...w, failureCount: w.failureCount + 1 }
+          : w
+      ));
+      
+      alert('Webhook test failed!');
+    }
+  };
+
+  // API Key Functions
   const addAPIKey = (e: React.FormEvent) => {
     e.preventDefault();
     const apiKey: APIKey = {
@@ -161,6 +295,22 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
       createdBy: 'Admin'
     });
     setShowAPIKeyForm(false);
+    onConnect({ type: 'api', apiKey, status: 'created' });
+  };
+
+  const toggleAPIKey = (id: string, isActive: boolean) => {
+    setApiKeys(apiKeys.map(k => 
+      k.id === id ? { ...k, isActive } : k
+    ));
+  };
+
+  const deleteAPIKey = (id: string) => {
+    setApiKeys(apiKeys.filter(k => k.id !== id));
+  };
+
+  const copyAPIKey = (key: string) => {
+    navigator.clipboard.writeText(key);
+    alert('API key copied to clipboard!');
   };
 
   const renderStorageTab = () => (
@@ -168,12 +318,17 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {storageProviders.map((provider) => {
           const storage = cloudStorages.find(s => s.provider === provider.id);
+          const isConnecting = syncing === provider.id;
+          
           return (
-            <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">{provider.icon}</span>
-                  <h3 className="font-semibold text-gray-900">{provider.name}</h3>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{provider.name}</h3>
+                    <p className="text-xs text-gray-500">{provider.description}</p>
+                  </div>
                 </div>
                 {storage?.isConnected ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -190,24 +345,76 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
                   </span>
                 </div>
                 
-                {storage?.isConnected && storage.lastSync && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Last Sync:</span>
-                    <span className="text-gray-900">{new Date(storage.lastSync).toLocaleString()}</span>
-                  </div>
+                {storage?.isConnected && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Folder:</span>
+                      <span className="text-gray-900 font-mono text-xs">{storage.folderPath}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Auto Sync:</span>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={storage.autoSync}
+                          onChange={(e) => {
+                            setCloudStorages(storages => 
+                              storages.map(s => 
+                                s.id === storage.id ? { ...s, autoSync: e.target.checked } : s
+                              )
+                            );
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
+                    {storage.lastSync && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Last Sync:</span>
+                        <span className="text-gray-900">{new Date(storage.lastSync).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 
-                <button
-                  onClick={() => storage?.isConnected ? null : connectStorage(provider.id)}
-                  className={`w-full py-2 px-4 rounded-lg transition-colors ${
-                    storage?.isConnected 
-                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                  disabled={storage?.isConnected}
-                >
-                  {storage?.isConnected ? 'Connected' : 'Connect'}
-                </button>
+                <div className="flex space-x-2">
+                  {storage?.isConnected ? (
+                    <>
+                      <button
+                        onClick={() => syncStorage(provider.id)}
+                        disabled={isConnecting}
+                        className="flex-1 flex items-center justify-center space-x-2 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${isConnecting ? 'animate-spin' : ''}`} />
+                        <span>{isConnecting ? 'Syncing...' : 'Sync Now'}</span>
+                      </button>
+                      <button
+                        onClick={() => disconnectStorage(provider.id)}
+                        className="px-3 py-2 text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                      >
+                        Disconnect
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => connectStorage(provider.id)}
+                      disabled={isConnecting}
+                      className="w-full flex items-center justify-center space-x-2 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                    >
+                      {isConnecting ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                          <span>Connecting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="h-4 w-4" />
+                          <span>Connect</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -221,12 +428,17 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {calendarProviders.map((provider) => {
           const calendar = calendarIntegrations.find(c => c.provider === provider.id);
+          const isConnecting = syncing === provider.id;
+          
           return (
-            <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <span className="text-2xl">{provider.icon}</span>
-                  <h3 className="font-semibold text-gray-900">{provider.name}</h3>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{provider.name}</h3>
+                    <p className="text-xs text-gray-500">{provider.description}</p>
+                  </div>
                 </div>
                 {calendar?.isConnected ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
@@ -246,28 +458,131 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
                 {calendar?.isConnected && (
                   <>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Sync Direction:</span>
-                      <span className="text-gray-900">{calendar.syncDirection}</span>
+                      <span className="text-gray-600">Sync Events:</span>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={calendar.syncEvents}
+                          onChange={(e) => toggleCalendarSync(provider.id, e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
                     </div>
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Events Sync:</span>
-                      <span className={`font-medium ${calendar.syncEvents ? 'text-green-600' : 'text-gray-500'}`}>
-                        {calendar.syncEvents ? 'Enabled' : 'Disabled'}
-                      </span>
+                      <span className="text-gray-600">Sync Direction:</span>
+                      <select
+                        value={calendar.syncDirection}
+                        onChange={(e) => {
+                          setCalendarIntegrations(calendars => 
+                            calendars.map(c => 
+                              c.id === calendar.id 
+                                ? { ...c, syncDirection: e.target.value as 'one-way' | 'two-way' }
+                                : c
+                            )
+                          );
+                        }}
+                        className="text-xs px-2 py-1 border border-gray-300 rounded"
+                      >
+                        <option value="one-way">One-way</option>
+                        <option value="two-way">Two-way</option>
+                      </select>
                     </div>
+                    {calendar.lastSync && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600">Last Sync:</span>
+                        <span className="text-gray-900">{new Date(calendar.lastSync).toLocaleString()}</span>
+                      </div>
+                    )}
                   </>
                 )}
                 
                 <button
                   onClick={() => calendar?.isConnected ? null : connectCalendar(provider.id)}
+                  disabled={calendar?.isConnected || isConnecting}
                   className={`w-full py-2 px-4 rounded-lg transition-colors ${
                     calendar?.isConnected 
                       ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
                       : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
-                  disabled={calendar?.isConnected}
                 >
-                  {calendar?.isConnected ? 'Connected' : 'Connect'}
+                  {isConnecting ? 'Connecting...' : calendar?.isConnected ? 'Connected' : 'Connect'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderCommunicationTab = () => (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {communicationProviders.map((provider) => {
+          const comm = communicationIntegrations.find(c => c.provider === provider.id);
+          const isConnecting = syncing === provider.id;
+          
+          return (
+            <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{provider.icon}</span>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{provider.name}</h3>
+                    <p className="text-xs text-gray-500">{provider.description}</p>
+                  </div>
+                </div>
+                {comm?.isConnected ? (
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-gray-400" />
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Status:</span>
+                  <span className={`font-medium ${comm?.isConnected ? 'text-green-600' : 'text-gray-500'}`}>
+                    {comm?.isConnected ? 'Connected' : 'Not Connected'}
+                  </span>
+                </div>
+                
+                {comm?.isConnected && (
+                  <>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-600">Auto Notifications:</span>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={comm.autoNotifications}
+                          onChange={(e) => toggleNotifications(provider.id, e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                      </label>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-gray-600">Events:</span>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {comm.notificationTypes.map((type, index) => (
+                          <span key={index} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            {type}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                <button
+                  onClick={() => comm?.isConnected ? null : connectCommunication(provider.id)}
+                  disabled={comm?.isConnected || isConnecting}
+                  className={`w-full py-2 px-4 rounded-lg transition-colors ${
+                    comm?.isConnected 
+                      ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {isConnecting ? 'Connecting...' : comm?.isConnected ? 'Connected' : 'Connect'}
                 </button>
               </div>
             </div>
@@ -283,9 +598,10 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         <h3 className="text-lg font-semibold text-gray-900">Webhook Endpoints</h3>
         <button
           onClick={() => setShowWebhookForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Add Webhook
+          <Plus className="h-4 w-4" />
+          <span>Add Webhook</span>
         </button>
       </div>
 
@@ -314,7 +630,7 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Events to Subscribe</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-3">
                 {webhookEvents.map(event => (
                   <label key={event} className="flex items-center space-x-2">
                     <input
@@ -355,23 +671,47 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         {webhooks.map((webhook) => (
           <div key={webhook.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-900">{webhook.name}</h4>
-                <p className="text-sm text-gray-600">{webhook.url}</p>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h4 className="font-semibold text-gray-900">{webhook.name}</h4>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    webhook.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {webhook.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 font-mono mb-2">{webhook.url}</p>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span>{webhook.events.length} events</span>
-                  <span>{webhook.successCount} success</span>
-                  <span>{webhook.failureCount} failures</span>
+                  <span className="text-green-600">{webhook.successCount} success</span>
+                  <span className="text-red-600">{webhook.failureCount} failures</span>
+                  {webhook.lastTriggered && (
+                    <span>Last: {new Date(webhook.lastTriggered).toLocaleString()}</span>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  webhook.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {webhook.isActive ? 'Active' : 'Inactive'}
-                </span>
-                <button className="p-2 text-gray-600 hover:text-blue-600 rounded-lg">
-                  <Settings className="h-4 w-4" />
+                <button
+                  onClick={() => testWebhook(webhook)}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                >
+                  Test
+                </button>
+                <button
+                  onClick={() => toggleWebhook(webhook.id, !webhook.isActive)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    webhook.isActive 
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  }`}
+                >
+                  {webhook.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button
+                  onClick={() => deleteWebhook(webhook.id)}
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -387,9 +727,10 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         <h3 className="text-lg font-semibold text-gray-900">API Keys</h3>
         <button
           onClick={() => setShowAPIKeyForm(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Generate API Key
+          <Plus className="h-4 w-4" />
+          <span>Generate API Key</span>
         </button>
       </div>
 
@@ -408,7 +749,7 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 max-h-32 overflow-y-auto border border-gray-300 rounded-lg p-3">
                 {apiPermissions.map(permission => (
                   <label key={permission} className="flex items-center space-x-2">
                     <input
@@ -449,23 +790,48 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         {apiKeys.map((apiKey) => (
           <div key={apiKey.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-semibold text-gray-900">{apiKey.name}</h4>
-                <p className="text-sm text-gray-600 font-mono">{apiKey.key}</p>
-                <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+              <div className="flex-1">
+                <div className="flex items-center space-x-3 mb-2">
+                  <h4 className="font-semibold text-gray-900">{apiKey.name}</h4>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    apiKey.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {apiKey.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2 mb-2">
+                  <p className="text-sm text-gray-600 font-mono bg-gray-100 px-2 py-1 rounded">
+                    {apiKey.key}
+                  </p>
+                  <button
+                    onClick={() => copyAPIKey(apiKey.key)}
+                    className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <span>{apiKey.permissions.length} permissions</span>
                   <span>{apiKey.usageCount} requests</span>
                   <span>Created {new Date(apiKey.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  apiKey.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                }`}>
-                  {apiKey.isActive ? 'Active' : 'Inactive'}
-                </span>
-                <button className="p-2 text-gray-600 hover:text-blue-600 rounded-lg">
-                  <Settings className="h-4 w-4" />
+                <button
+                  onClick={() => toggleAPIKey(apiKey.id, !apiKey.isActive)}
+                  className={`px-3 py-1 text-sm rounded transition-colors ${
+                    apiKey.isActive 
+                      ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                  }`}
+                >
+                  {apiKey.isActive ? 'Disable' : 'Enable'}
+                </button>
+                <button
+                  onClick={() => deleteAPIKey(apiKey.id)}
+                  className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -485,8 +851,65 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         <div className="flex items-center space-x-2">
           <Zap className="h-5 w-5 text-yellow-500" />
           <span className="text-sm text-gray-600">
-            {cloudStorages.filter(s => s.isConnected).length + calendarIntegrations.filter(c => c.isConnected).length} integrations active
+            {cloudStorages.filter(s => s.isConnected).length + calendarIntegrations.filter(c => c.isConnected).length + communicationIntegrations.filter(c => c.isConnected).length} integrations active
           </span>
+        </div>
+      </div>
+
+      {/* Integration Status Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-blue-100">
+              <Cloud className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">
+              {cloudStorages.filter(s => s.isConnected).length}
+            </p>
+            <p className="text-sm text-gray-500">Cloud Storage</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-green-100">
+              <Calendar className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">
+              {calendarIntegrations.filter(c => c.isConnected).length}
+            </p>
+            <p className="text-sm text-gray-500">Calendar Sync</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-purple-100">
+              <MessageSquare className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">
+              {communicationIntegrations.filter(c => c.isConnected).length}
+            </p>
+            <p className="text-sm text-gray-500">Communication</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-3 rounded-lg bg-orange-100">
+              <Webhook className="h-6 w-6 text-orange-600" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-2xl font-bold text-gray-900">{webhooks.length + apiKeys.length}</p>
+            <p className="text-sm text-gray-500">API & Webhooks</p>
+          </div>
         </div>
       </div>
 
@@ -517,40 +940,7 @@ const IntegrationHub: React.FC<IntegrationHubProps> = ({ onConnect }) => {
         <div className="p-6">
           {activeTab === 'storage' && renderStorageTab()}
           {activeTab === 'calendar' && renderCalendarTab()}
-          {activeTab === 'communication' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {communicationProviders.map((provider) => {
-                const comm = communicationIntegrations.find(c => c.provider === provider.id);
-                return (
-                  <div key={provider.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{provider.icon}</span>
-                        <h3 className="font-semibold text-gray-900">{provider.name}</h3>
-                      </div>
-                      {comm?.isConnected ? (
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                      ) : (
-                        <AlertCircle className="h-5 w-5 text-gray-400" />
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={() => comm?.isConnected ? null : connectCommunication(provider.id)}
-                      className={`w-full py-2 px-4 rounded-lg transition-colors ${
-                        comm?.isConnected 
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed' 
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                      disabled={comm?.isConnected}
-                    >
-                      {comm?.isConnected ? 'Connected' : 'Connect'}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {activeTab === 'communication' && renderCommunicationTab()}
           {activeTab === 'webhooks' && renderWebhooksTab()}
           {activeTab === 'api' && renderAPITab()}
         </div>
