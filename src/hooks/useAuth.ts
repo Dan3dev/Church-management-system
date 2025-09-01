@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '../config/supabase';
+import { supabase, getCurrentUser } from '../config/supabase';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let supabaseAuthSubscription: any = null;
+
     // Get initial session
     const getInitialSession = async () => {
       try {
@@ -34,7 +36,6 @@ export const useAuth = () => {
     getInitialSession();
 
     // Listen for auth changes
-    // Listen for auth changes (only if Supabase is configured)
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange(
         async (event, session) => {
@@ -43,42 +44,28 @@ export const useAuth = () => {
           setLoading(false);
         }
       );
-      subscription = data.subscription;
+      supabaseAuthSubscription = data.subscription;
     } else {
-    
-    // For demo mode, set localStorage flag
-    if (!supabase && !error) {
-      localStorage.setItem('demo-auth', 'true');
-      setUser(data?.user || null);
-    }
-    
       // Demo mode - listen for manual auth changes
       const handleStorageChange = () => {
         getCurrentUser().then(({ user }) => {
           setUser(user);
         });
-    
-    // For demo mode, clear localStorage flag
-    if (!supabase) {
-      localStorage.removeItem('demo-auth');
-      setUser(null);
-    }
-    
       };
       
       window.addEventListener('storage', handleStorageChange);
-      return () => window.removeEventListener('storage', handleStorageChange);
+      
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
     }
 
-    return () => subscription?.unsubscribe();
+    return () => {
+      if (supabaseAuthSubscription) {
+        supabaseAuthSubscription.unsubscribe();
+      }
+    };
   }, []);
 
   return { user, loading };
 };
-    
-    // For demo mode, set localStorage flag
-    if (!supabase && !error) {
-      localStorage.setItem('demo-auth', 'true');
-      setUser(data?.user || null);
-    }
-    
