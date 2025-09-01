@@ -34,7 +34,7 @@ export const useAuth = () => {
     getInitialSession();
 
     // Listen for auth changes
-    let subscription: any = null;
+    // Listen for auth changes (only if Supabase is configured)
     if (supabase) {
       const { data } = supabase.auth.onAuthStateChange(
         async (event, session) => {
@@ -44,6 +44,30 @@ export const useAuth = () => {
         }
       );
       subscription = data.subscription;
+    } else {
+    
+    // For demo mode, set localStorage flag
+    if (!supabase && !error) {
+      localStorage.setItem('demo-auth', 'true');
+      setUser(data?.user || null);
+    }
+    
+      // Demo mode - listen for manual auth changes
+      const handleStorageChange = () => {
+        getCurrentUser().then(({ user }) => {
+          setUser(user);
+        });
+    
+    // For demo mode, clear localStorage flag
+    if (!supabase) {
+      localStorage.removeItem('demo-auth');
+      setUser(null);
+    }
+    
+      };
+      
+      window.addEventListener('storage', handleStorageChange);
+      return () => window.removeEventListener('storage', handleStorageChange);
     }
 
     return () => subscription?.unsubscribe();
@@ -51,3 +75,10 @@ export const useAuth = () => {
 
   return { user, loading };
 };
+    
+    // For demo mode, set localStorage flag
+    if (!supabase && !error) {
+      localStorage.setItem('demo-auth', 'true');
+      setUser(data?.user || null);
+    }
+    
