@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { useNotifications } from './hooks/useNotifications';
+import { useApp } from './context/AppContext';
 import LoginForm from './components/auth/LoginForm';
 import Sidebar from './components/Layout/Sidebar';
 import NotificationCenter from './components/Layout/NotificationCenter';
@@ -68,11 +69,10 @@ function App() {
     clearAll 
   } = useNotifications();
   const { isOnline, offlineActions, addOfflineAction, syncOfflineActions } = useOffline();
+  const { t, formatCurrency, sendNotification, state } = useApp();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
-  const [currentLanguage, setCurrentLanguage] = useState('en');
-  const [baseCurrency, setBaseCurrency] = useState('USD');
   const [members, setMembers] = useState<Member[]>(mockMembers);
   const [families, setFamilies] = useState<Family[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(mockAttendance);
@@ -85,7 +85,7 @@ function App() {
       accountNumber: '****1234',
       bankName: 'First National Bank',
       balance: 25000,
-      currency: 'USD',
+      currency: state.baseCurrency,
       isActive: true,
       campus: 'Main Campus',
       openingBalance: 20000,
@@ -126,7 +126,7 @@ function App() {
       isActive: true,
       preferences: {
         theme: 'light',
-        language: 'English',
+        language: state.currentLanguage,
         timezone: 'America/New_York',
         notifications: {
           email: true,
@@ -188,7 +188,7 @@ function App() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -205,14 +205,14 @@ function App() {
       id: Date.now().toString()
     };
     setMembers([...members, member]);
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Member Added',
-      message: `${member.firstName} ${member.lastName} has been added successfully`,
-      read: false,
+      title: t('memberAdded') || 'Member Added',
+      message: t('memberAddedSuccess', `${member.firstName} ${member.lastName}`) || `${member.firstName} ${member.lastName} has been added successfully`,
       userId: user.id,
       priority: 'medium',
-      category: 'members'
+      category: 'members',
+      read: false
     });
   };
 
@@ -222,14 +222,14 @@ function App() {
     ));
     const member = members.find(m => m.id === id);
     if (member) {
-      addNotification({
+      sendNotification({
         type: 'info',
-        title: 'Member Updated',
-        message: `${member.firstName} ${member.lastName}'s information has been updated`,
-        read: false,
+        title: t('memberUpdated') || 'Member Updated',
+        message: t('memberUpdatedSuccess', `${member.firstName} ${member.lastName}`) || `${member.firstName} ${member.lastName}'s information has been updated`,
         userId: user.id,
         priority: 'low',
-        category: 'members'
+        category: 'members',
+        read: false
       });
     }
   };
@@ -239,14 +239,14 @@ function App() {
     setMembers(members.filter(member => member.id !== id));
     setAttendance(attendance.filter(record => record.memberId !== id));
     if (member) {
-      addNotification({
+      sendNotification({
         type: 'warning',
-        title: 'Member Deleted',
-        message: `${member.firstName} ${member.lastName} has been removed from the system`,
-        read: false,
+        title: t('memberDeleted') || 'Member Deleted',
+        message: t('memberDeletedSuccess', `${member.firstName} ${member.lastName}`) || `${member.firstName} ${member.lastName} has been removed from the system`,
         userId: user.id,
         priority: 'medium',
-        category: 'members'
+        category: 'members',
+        read: false
       });
     }
   };
@@ -258,14 +258,14 @@ function App() {
       id: Date.now().toString()
     };
     setFamilies([...families, family]);
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Family Added',
-      message: `${family.familyName} family has been registered`,
-      read: false,
+      title: t('familyAdded') || 'Family Added',
+      message: t('familyAddedSuccess', family.familyName) || `${family.familyName} family has been registered`,
       userId: user.id,
       priority: 'medium',
-      category: 'families'
+      category: 'families',
+      read: false
     });
   };
 
@@ -285,14 +285,14 @@ function App() {
       id: Date.now().toString()
     };
     setAttendance([...attendance, record]);
-    addNotification({
+    sendNotification({
       type: 'info',
-      title: 'Attendance Recorded',
-      message: `Attendance for ${record.service} on ${new Date(record.date).toLocaleDateString()} has been recorded`,
-      read: false,
+      title: t('attendanceRecorded') || 'Attendance Recorded',
+      message: t('attendanceRecordedSuccess', record.service, new Date(record.date).toLocaleDateString()) || `Attendance for ${record.service} on ${new Date(record.date).toLocaleDateString()} has been recorded`,
       userId: user.id,
       priority: 'low',
-      category: 'attendance'
+      category: 'attendance',
+      read: false
     });
   };
 
@@ -304,14 +304,14 @@ function App() {
       accountId: newTransaction.accountId || accounts[0]?.id || '1'
     };
     setTransactions([...transactions, transaction]);
-    addNotification({
+    sendNotification({
       type: transaction.type === 'Income' ? 'success' : 'info',
-      title: 'Transaction Added',
-      message: `${transaction.type} of $${transaction.amount.toLocaleString()} recorded`,
-      read: false,
+      title: t('transactionAdded') || 'Transaction Added',
+      message: t('transactionAddedSuccess', transaction.type, formatCurrency(transaction.amount)) || `${transaction.type} of ${formatCurrency(transaction.amount)} recorded`,
       userId: user.id,
       priority: 'medium',
-      category: 'finance'
+      category: 'finance',
+      read: false
     });
   };
 
@@ -323,14 +323,14 @@ function App() {
       balance: newAccount.openingBalance
     };
     setAccounts([...accounts, account]);
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Account Added',
-      message: `${account.name} account has been created`,
-      read: false,
+      title: t('accountAdded') || 'Account Added',
+      message: t('accountAddedSuccess', account.name) || `${account.name} account has been created`,
       userId: user.id,
       priority: 'medium',
-      category: 'accounts'
+      category: 'accounts',
+      read: false
     });
   };
 
@@ -350,14 +350,14 @@ function App() {
       id: Date.now().toString()
     };
     setEvents([...events, event]);
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Event Created',
-      message: `${event.title} has been scheduled for ${new Date(event.date).toLocaleDateString()}`,
-      read: false,
+      title: t('eventCreated') || 'Event Created',
+      message: t('eventCreatedSuccess', event.title, new Date(event.date).toLocaleDateString()) || `${event.title} has been scheduled for ${new Date(event.date).toLocaleDateString()}`,
       userId: user.id,
       priority: 'medium',
-      category: 'events'
+      category: 'events',
+      read: false
     });
   };
 
@@ -378,14 +378,14 @@ function App() {
       id: Date.now().toString()
     };
     setGiving([...giving, givingRecord]);
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Giving Recorded',
-      message: `$${givingRecord.amount.toLocaleString()} ${givingRecord.type} from ${givingRecord.memberName}`,
-      read: false,
+      title: t('givingRecorded') || 'Giving Recorded',
+      message: t('givingRecordedSuccess', formatCurrency(givingRecord.amount), givingRecord.type, givingRecord.memberName) || `${formatCurrency(givingRecord.amount)} ${givingRecord.type} from ${givingRecord.memberName}`,
       userId: user.id,
       priority: 'medium',
-      category: 'giving'
+      category: 'giving',
+      read: false
     });
   };
 
@@ -610,47 +610,29 @@ function App() {
   // Quick actions handler
   const handleQuickAction = (action: string) => {
     setActiveTab(action);
+    sendNotification({
+      type: 'info',
+      title: t('navigationUpdate') || 'Navigation Update',
+      message: t('navigatedTo', action) || `Navigated to ${action}`,
+      userId: user.id,
+      priority: 'low',
+      category: 'navigation',
+      read: false
+    });
   };
 
   // Integration handler
   const handleIntegrationConnect = (integration: any) => {
-    addNotification({
+    sendNotification({
       type: 'success',
-      title: 'Integration Connected',
-      message: `${integration.provider} has been connected successfully`,
-      read: false,
+      title: t('integrationConnected') || 'Integration Connected',
+      message: t('integrationConnectedSuccess', integration.provider) || `${integration.provider} has been connected successfully`,
       userId: user.id,
       priority: 'medium',
-      category: 'integrations'
+      category: 'integrations',
+      read: false
     });
   };
-
-  // Language change handler
-  const handleLanguageChange = (language: string) => {
-    setCurrentLanguage(language);
-    addNotification({
-      type: 'info',
-      title: 'Language Changed',
-      message: `Interface language changed to ${language}`,
-      read: false,
-      userId: user.id,
-      priority: 'low',
-      category: 'settings'
-    });
-  };
-
-  // Currency change handler
-  const handleCurrencyChange = (currency: string) => {
-    setBaseCurrency(currency);
-    addNotification({
-      type: 'info',
-      title: 'Currency Updated',
-      message: `Base currency changed to ${currency}`,
-      read: false,
-      userId: user.id,
-      priority: 'low',
-      category: 'settings'
-    });
   };
   const renderActiveComponent = () => {
     switch (activeTab) {
@@ -698,6 +680,7 @@ function App() {
         return (
           <Finance 
             transactions={transactions}
+            accounts={accounts}
             onAddTransaction={addTransaction}
           />
         );
@@ -842,7 +825,6 @@ function App() {
             transactions={transactions}
             attendance={attendance}
             giving={giving}
-            onNotification={addNotification}
           />
         );
       case 'integrations':
@@ -853,17 +835,11 @@ function App() {
         );
       case 'languages':
         return (
-          <LanguageManager 
-            currentLanguage={currentLanguage}
-            onLanguageChange={handleLanguageChange}
-          />
+          <LanguageManager />
         );
       case 'currencies':
         return (
-          <CurrencyManager 
-            baseCurrency={baseCurrency}
-            onBaseCurrencyChange={handleCurrencyChange}
-          />
+          <CurrencyManager />
         );
       default:
         return <Dashboard members={members} attendance={attendance} transactions={transactions} events={events} onQuickAction={handleQuickAction} onViewMember={setSelectedMember} />;
@@ -885,27 +861,33 @@ function App() {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <h1 className="text-xl font-semibold text-gray-900 capitalize">
-                  {activeTab.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                  {t(activeTab) || activeTab.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                 </h1>
                 {!isOnline && (
                   <span className="bg-red-100 text-red-700 px-2 py-1 text-xs rounded-full">
-                    Offline Mode
+                    {t('offlineMode') || 'Offline Mode'}
                   </span>
                 )}
+                <span className="bg-blue-100 text-blue-700 px-2 py-1 text-xs rounded-full">
+                  {state.baseCurrency}
+                </span>
+                <span className="bg-green-100 text-green-700 px-2 py-1 text-xs rounded-full">
+                  {state.languages.find(l => l.code === state.currentLanguage)?.nativeName || state.currentLanguage.toUpperCase()}
+                </span>
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-600">
-                  {new Date().toLocaleDateString('en-US', { 
+                  {new Date().toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage), { 
                     weekday: 'short', 
                     month: 'short', 
                     day: 'numeric' 
                   })}
                 </span>
                 <NotificationCenter
-                  notifications={notifications}
-                  onMarkAsRead={markAsRead}
-                  onRemove={removeNotification}
-                  onClearAll={clearAll}
+                  notifications={state.notifications}
+                  onMarkAsRead={(id) => dispatch({ type: 'MARK_NOTIFICATION_READ', payload: id })}
+                  onRemove={(id) => dispatch({ type: 'REMOVE_NOTIFICATION', payload: id })}
+                  onClearAll={() => dispatch({ type: 'CLEAR_ALL_NOTIFICATIONS' })}
                 />
               </div>
             </div>

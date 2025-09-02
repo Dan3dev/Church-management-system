@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Brain, TrendingUp, Users, DollarSign, AlertTriangle, CheckCircle, X, Lightbulb, Target, RefreshCw, Bell } from 'lucide-react';
 import { AIInsight, Member, FinancialTransaction, AttendanceRecord, Giving } from '../../types';
+import { useApp } from '../../context/AppContext';
 
 interface AIInsightsProps {
   members: Member[];
@@ -14,6 +15,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
   const [insights, setInsights] = useState<AIInsight[]>([]);
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const { formatCurrency, t, sendNotification } = useApp();
 
   useEffect(() => {
     generateInsights();
@@ -46,16 +48,16 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       newInsights.push({
         id: '1',
         type: 'prediction',
-        title: 'Membership Growth Forecast',
-        description: `Based on current trends, you're projected to gain ${Math.round(growthRate)} new members this year. Consider expanding small group capacity and preparing for increased facility needs.`,
+        title: t('membershipGrowthForecast') || 'Membership Growth Forecast',
+        description: t('membershipGrowthDescription', Math.round(growthRate)) || `Based on current trends, you're projected to gain ${Math.round(growthRate)} new members this year. Consider expanding small group capacity and preparing for increased facility needs.`,
         confidence: 85,
         category: 'membership',
         data: { growthRate, recentMembers: recentMembers.length, projectedTotal: members.length + growthRate },
         actionable: true,
         actions: [
-          { id: '1', label: 'View Small Groups', type: 'navigate', target: 'smallgroups' },
-          { id: '2', label: 'Plan Expansion', type: 'create', target: 'events' },
-          { id: '3', label: 'Review Capacity', type: 'navigate', target: 'campuses' }
+          { id: '1', label: t('viewSmallGroups') || 'View Small Groups', type: 'navigate', target: 'smallgroups' },
+          { id: '2', label: t('planExpansion') || 'Plan Expansion', type: 'create', target: 'events' },
+          { id: '3', label: t('reviewCapacity') || 'Review Capacity', type: 'navigate', target: 'campuses' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -77,16 +79,16 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       newInsights.push({
         id: '2',
         type: 'alert',
-        title: 'Budget Deficit Alert',
-        description: `This month shows a deficit of $${Math.abs(netIncome).toLocaleString()}. Immediate action recommended: review expenses, consider fundraising initiatives, or adjust budget allocations.`,
+        title: t('budgetDeficitAlert') || 'Budget Deficit Alert',
+        description: t('budgetDeficitDescription', formatCurrency(Math.abs(netIncome))) || `This month shows a deficit of ${formatCurrency(Math.abs(netIncome))}. Immediate action recommended: review expenses, consider fundraising initiatives, or adjust budget allocations.`,
         confidence: 95,
         category: 'finance',
         data: { deficit: Math.abs(netIncome), income: monthlyIncome, expenses: monthlyExpenses, severity: 'high' },
         actionable: true,
         actions: [
-          { id: '1', label: 'Review Expenses', type: 'navigate', target: 'finance' },
-          { id: '2', label: 'Plan Fundraiser', type: 'create', target: 'events' },
-          { id: '3', label: 'Budget Analysis', type: 'navigate', target: 'reports' }
+          { id: '1', label: t('reviewExpenses') || 'Review Expenses', type: 'navigate', target: 'finance' },
+          { id: '2', label: t('planFundraiser') || 'Plan Fundraiser', type: 'create', target: 'events' },
+          { id: '3', label: t('budgetAnalysis') || 'Budget Analysis', type: 'navigate', target: 'reports' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -95,15 +97,15 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       newInsights.push({
         id: '2b',
         type: 'recommendation',
-        title: 'Surplus Investment Opportunity',
-        description: `Strong financial position with $${netIncome.toLocaleString()} surplus. Consider investing in ministry expansion, building improvements, or emergency fund growth.`,
+        title: t('surplusInvestmentOpportunity') || 'Surplus Investment Opportunity',
+        description: t('surplusInvestmentDescription', formatCurrency(netIncome)) || `Strong financial position with ${formatCurrency(netIncome)} surplus. Consider investing in ministry expansion, building improvements, or emergency fund growth.`,
         confidence: 88,
         category: 'finance',
         data: { surplus: netIncome, percentage: (netIncome / monthlyIncome) * 100 },
         actionable: true,
         actions: [
-          { id: '1', label: 'Investment Options', type: 'navigate', target: 'accounts' },
-          { id: '2', label: 'Ministry Expansion', type: 'navigate', target: 'ministries' }
+          { id: '1', label: t('investmentOptions') || 'Investment Options', type: 'navigate', target: 'accounts' },
+          { id: '2', label: t('ministryExpansion') || 'Ministry Expansion', type: 'navigate', target: 'ministries' }
         ],
         createdAt: new Date().toISOString(),
         dismissed: false
@@ -363,12 +365,15 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
     );
     
     criticalInsights.forEach(insight => {
+      sendNotification({
       onNotification?.({
         type: insight.type === 'alert' ? 'warning' : 'info',
-        title: 'New AI Insight',
+        title: t('newAIInsight') || 'New AI Insight',
         message: insight.title,
+        userId: 'system',
+        priority: insight.type === 'alert' ? 'high' : 'medium',
         category: 'ai-insights',
-        actionUrl: '/ai-insights'
+        read: false
       });
     });
   };
@@ -378,10 +383,12 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       insight.id === id ? { ...insight, dismissed: true } : insight
     ));
     
-    onNotification?.({
+    sendNotification({
       type: 'success',
-      title: 'Insight Dismissed',
-      message: 'AI insight has been dismissed',
+      title: t('insightDismissed') || 'Insight Dismissed',
+      message: t('aiInsightDismissed') || 'AI insight has been dismissed',
+      userId: 'system',
+      priority: 'low',
       category: 'ai-insights'
     });
   };
@@ -389,10 +396,12 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
   const executeAction = (action: any, insight: AIInsight) => {
     console.log('Executing AI action:', action);
     
-    onNotification?.({
+    sendNotification({
       type: 'info',
-      title: 'Action Executed',
-      message: `Navigating to ${action.label}`,
+      title: t('actionExecuted') || 'Action Executed',
+      message: t('navigatingTo', action.label) || `Navigating to ${action.label}`,
+      userId: 'system',
+      priority: 'low',
       category: 'ai-insights'
     });
     
@@ -441,8 +450,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
         <div className="flex items-center space-x-3">
           <Brain className="h-8 w-8 text-blue-600" />
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">AI Insights & Predictions</h2>
-            <p className="text-gray-600">Powered by machine learning analytics</p>
+            <h2 className="text-2xl font-bold text-gray-900">{t('aiInsightsPredictions') || 'AI Insights & Predictions'}</h2>
+            <p className="text-gray-600">{t('poweredByML') || 'Powered by machine learning analytics'}</p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
@@ -453,7 +462,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <span className="text-sm text-gray-700">Auto-refresh</span>
+            <span className="text-sm text-gray-700">{t('autoRefresh') || 'Auto-refresh'}</span>
           </label>
           <button
             onClick={generateInsights}
@@ -461,7 +470,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
             className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>{loading ? 'Analyzing...' : 'Refresh Insights'}</span>
+            <span>{loading ? t('analyzing') || 'Analyzing...' : t('refreshInsights') || 'Refresh Insights'}</span>
           </button>
         </div>
       </div>
@@ -476,7 +485,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-gray-900">{activeInsights.length}</p>
-            <p className="text-sm text-gray-500">Active Insights</p>
+            <p className="text-sm text-gray-500">{t('activeInsights') || 'Active Insights'}</p>
           </div>
         </div>
 
@@ -488,7 +497,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-gray-900">{criticalInsights.length}</p>
-            <p className="text-sm text-gray-500">Critical Alerts</p>
+            <p className="text-sm text-gray-500">{t('criticalAlerts') || 'Critical Alerts'}</p>
           </div>
         </div>
 
@@ -500,7 +509,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-gray-900">{actionableInsights.length}</p>
-            <p className="text-sm text-gray-500">Actionable Items</p>
+            <p className="text-sm text-gray-500">{t('actionableItems') || 'Actionable Items'}</p>
           </div>
         </div>
 
@@ -514,7 +523,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
             <p className="text-2xl font-bold text-gray-900">
               {Math.round(activeInsights.reduce((sum, i) => sum + i.confidence, 0) / activeInsights.length) || 0}%
             </p>
-            <p className="text-sm text-gray-500">Avg Confidence</p>
+            <p className="text-sm text-gray-500">{t('avgConfidence') || 'Avg Confidence'}</p>
           </div>
         </div>
       </div>
@@ -524,8 +533,8 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
           <div className="flex items-center justify-center space-x-3">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <div className="text-center">
-              <p className="text-gray-600 font-medium">Analyzing church data...</p>
-              <p className="text-sm text-gray-500">Generating AI-powered insights and predictions</p>
+              <p className="text-gray-600 font-medium">{t('analyzingChurchData') || 'Analyzing church data...'}</p>
+              <p className="text-sm text-gray-500">{t('generatingAIInsights') || 'Generating AI-powered insights and predictions'}</p>
             </div>
           </div>
         </div>
@@ -547,7 +556,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
                       <div className="flex items-center space-x-3 mb-2">
                         <h3 className="text-lg font-semibold text-gray-900">{insight.title}</h3>
                         <span className={`px-2 py-1 text-xs rounded-full bg-${color}-100 text-${color}-700`}>
-                          {insight.confidence}% confidence
+                          {insight.confidence}% {t('confidence') || 'confidence'}
                         </span>
                         <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 capitalize">
                           {insight.type}
@@ -557,7 +566,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
                           priority === 'Medium' ? 'bg-yellow-100 text-yellow-700' :
                           'bg-green-100 text-green-700'
                         }`}>
-                          {priority} Priority
+                          {priority} {t('priority') || 'Priority'}
                         </span>
                       </div>
                       <p className="text-gray-700 mb-4 leading-relaxed">{insight.description}</p>
@@ -565,7 +574,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
                       {/* Data Visualization */}
                       {insight.data && (
                         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                          <h5 className="font-medium text-gray-900 mb-2">Key Metrics:</h5>
+                          <h5 className="font-medium text-gray-900 mb-2">{t('keyMetrics') || 'Key Metrics'}:</h5>
                           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                             {Object.entries(insight.data).map(([key, value]) => (
                               <div key={key} className="flex justify-between">
@@ -614,20 +623,20 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
       {activeInsights.length === 0 && !loading && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
           <Brain className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Active Insights</h3>
-          <p className="text-gray-500 mb-4">AI is analyzing your data. Check back later for personalized insights.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noActiveInsights') || 'No Active Insights'}</h3>
+          <p className="text-gray-500 mb-4">{t('aiAnalyzingData') || 'AI is analyzing your data. Check back later for personalized insights.'}</p>
           <button
             onClick={generateInsights}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Generate New Insights
+            {t('generateNewInsights') || 'Generate New Insights'}
           </button>
         </div>
       )}
 
       {/* Insight Categories */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Insight Categories</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('insightCategories') || 'Insight Categories'}</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {['membership', 'finance', 'attendance', 'giving', 'engagement'].map(category => {
             const categoryInsights = activeInsights.filter(i => i.category === category);
@@ -635,7 +644,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({ members, transactions, attendan
               <div key={category} className="text-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                 <p className="font-semibold text-gray-900 capitalize">{category}</p>
                 <p className="text-2xl font-bold text-blue-600">{categoryInsights.length}</p>
-                <p className="text-xs text-gray-500">insights</p>
+                <p className="text-xs text-gray-500">{t('insights') || 'insights'}</p>
               </div>
             );
           })}

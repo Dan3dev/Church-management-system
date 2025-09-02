@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DollarSign, Plus, TrendingUp, TrendingDown, Calendar, Filter } from 'lucide-react';
 import { FinancialTransaction } from '../types';
+import { useApp } from '../context/AppContext';
 
 interface FinanceProps {
   transactions: FinancialTransaction[];
@@ -11,6 +12,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
   const [showAddForm, setShowAddForm] = useState(false);
   const [filterType, setFilterType] = useState<string>('All');
   const [filterMonth, setFilterMonth] = useState<string>('');
+  const { formatCurrency, convertCurrency, state, t } = useApp();
 
   const [newTransaction, setNewTransaction] = useState<Omit<FinancialTransaction, 'id'>>({
     type: 'Income',
@@ -98,13 +100,13 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Financial Management</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{t('finance')}</h2>
         <button
           onClick={() => setShowAddForm(true)}
           className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Transaction</span>
+          <span>{t('addTransaction')}</span>
         </button>
       </div>
 
@@ -115,11 +117,11 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
             <div className="p-3 rounded-lg bg-green-100">
               <TrendingUp className="h-6 w-6 text-green-600" />
             </div>
-            <span className="text-sm text-green-600 font-medium">This Month</span>
+            <span className="text-sm text-green-600 font-medium">{t('thisMonth') || 'This Month'}</span>
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-gray-900">${monthlyIncome.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Monthly Income</p>
+            <p className="text-sm text-gray-500">{t('monthlyIncome')}</p>
           </div>
         </div>
 
@@ -128,11 +130,11 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
             <div className="p-3 rounded-lg bg-red-100">
               <TrendingDown className="h-6 w-6 text-red-600" />
             </div>
-            <span className="text-sm text-red-600 font-medium">This Month</span>
+            <span className="text-sm text-red-600 font-medium">{t('thisMonth') || 'This Month'}</span>
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-gray-900">${monthlyExpenses.toLocaleString()}</p>
-            <p className="text-sm text-gray-500">Monthly Expenses</p>
+            <p className="text-sm text-gray-500">{t('monthlyExpenses') || 'Monthly Expenses'}</p>
           </div>
         </div>
 
@@ -141,13 +143,13 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
             <div className="p-3 rounded-lg bg-blue-100">
               <DollarSign className="h-6 w-6 text-blue-600" />
             </div>
-            <span className="text-sm text-blue-600 font-medium">Net Income</span>
+            <span className="text-sm text-blue-600 font-medium">{t('netIncome') || 'Net Income'}</span>
           </div>
           <div className="space-y-1">
             <p className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ${netIncome.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-500">All Time</p>
+            <p className="text-sm text-gray-500">{t('allTime') || 'All Time'}</p>
           </div>
         </div>
 
@@ -156,13 +158,13 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
             <div className="p-3 rounded-lg bg-purple-100">
               <Calendar className="h-6 w-6 text-purple-600" />
             </div>
-            <span className="text-sm text-purple-600 font-medium">Monthly Balance</span>
+            <span className="text-sm text-purple-600 font-medium">{t('monthlyBalance') || 'Monthly Balance'}</span>
           </div>
           <div className="space-y-1">
             <p className={`text-2xl font-bold ${(monthlyIncome - monthlyExpenses) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               ${(monthlyIncome - monthlyExpenses).toLocaleString()}
             </p>
-            <p className="text-sm text-gray-500">This Month</p>
+            <p className="text-sm text-gray-500">{t('thisMonth') || 'This Month'}</p>
           </div>
         </div>
       </div>
@@ -170,7 +172,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
       {/* Add Transaction Form */}
       {showAddForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Transaction</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('addTransaction')}</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <select
@@ -178,8 +180,8 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 onChange={(e) => setNewTransaction({...newTransaction, type: e.target.value as 'Income' | 'Expense'})}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="Income">Income</option>
-                <option value="Expense">Expense</option>
+                <option value="Income">{t('income')}</option>
+                <option value="Expense">{t('expense')}</option>
               </select>
               
               <select
@@ -188,7 +190,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
               >
-                <option value="">Select Category</option>
+                <option value="">{t('selectCategory') || 'Select Category'}</option>
                 {(newTransaction.type === 'Income' ? incomeCategories : expenseCategories).map(category => (
                   <option key={category} value={category}>{category}</option>
                 ))}
@@ -199,8 +201,8 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 step="0.01"
                 placeholder="Amount"
                 value={newTransaction.amount}
-                onChange={(e) => setNewTransaction({...newTransaction, amount: parseFloat(e.target.value)})}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={t('description')}
+                <option value="">{t('selectAccount') || 'Select Account'}</option>
                 required
               />
               
@@ -208,7 +210,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 type="date"
                 value={newTransaction.date}
                 onChange={(e) => setNewTransaction({...newTransaction, date: e.target.value})}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={t('memberName') || 'Member Name (optional)'}
                 required
               />
               
@@ -233,8 +235,8 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 value={newTransaction.paymentMethod}
                 onChange={(e) => setNewTransaction({...newTransaction, paymentMethod: e.target.value})}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {paymentMethods.map(method => (
+                <span className="text-sm text-gray-700">{t('taxDeductible') || 'Tax Deductible'}</span>
+                    {account.name} ({formatCurrency(account.balance, account.currency)})
                   <option key={method} value={method}>{method}</option>
                 ))}
               </select>
@@ -242,7 +244,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
 
             <div className="flex space-x-3">
               <button
-                type="submit"
+                <span className="text-sm text-gray-700">{t('receiptSent') || 'Receipt Sent'}</span>
                 className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors"
               >
                 Add Transaction
@@ -252,7 +254,7 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                 onClick={() => setShowAddForm(false)}
                 className="bg-gray-300 text-gray-700 px-6 py-2 rounded-lg hover:bg-gray-400 transition-colors"
               >
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           </form>
@@ -269,9 +271,9 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
               onChange={(e) => setFilterType(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <option value="All">All Transactions</option>
-              <option value="Income">Income Only</option>
-              <option value="Expense">Expense Only</option>
+              <option value="All">{t('allTransactions') || 'All Transactions'}</option>
+              <option value="Income">{t('incomeOnly') || 'Income Only'}</option>
+              <option value="Expense">{t('expenseOnly') || 'Expense Only'}</option>
             </select>
             <input
               type="month"
@@ -290,16 +292,16 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('recentTransactions') || 'Recent Transactions'}</h3>
             <button className="flex items-center space-x-2 text-blue-600 hover:text-blue-700 text-sm">
-              <span>Export CSV</span>
+              <span>{t('export')} CSV</span>
             </button>
           </div>
         </div>
         
         {/* Financial Trend Chart */}
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-          <h4 className="font-medium text-gray-900 mb-3">6-Month Financial Trend</h4>
+          <h4 className="font-medium text-gray-900 mb-3">{t('financialTrend') || '6-Month Financial Trend'}</h4>
           <div className="grid grid-cols-6 gap-2">
             {trendData.map((month, index) => (
               <div key={index} className="text-center">
@@ -355,10 +357,10 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
                         </div>
                       </div>
                     </div>
-                  </div>
+                              <span className="text-xs bg-green-100 text-green-700 px-1 py-0.5 rounded">{t('receipt') || 'Receipt'}</span>
                 </div>
               </div>
-            </div>
+                              <span className="text-xs bg-purple-100 text-purple-700 px-1 py-0.5 rounded">{t('reconciled') || 'Reconciled'}</span>
           ))}
         </div>
       </div>
@@ -366,9 +368,9 @@ const Finance: React.FC<FinanceProps> = ({ transactions, onAddTransaction }) => 
       {filteredTransactions.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
           <div className="text-gray-500">
-            <p className="text-lg mb-2">No transactions found</p>
-            <p className="text-sm">Add your first transaction to get started.</p>
-          </div>
+            <p className="text-lg mb-2">{t('noTransactionsFound') || 'No transactions found'}</p>
+            <p className="text-sm">{t('addFirstTransaction') || 'Add your first transaction to get started.'}</p>
+                              <span className="text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded">{t('tax') || 'Tax'}</span>
         </div>
       )}
     </div>

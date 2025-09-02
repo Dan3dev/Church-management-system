@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Member, AttendanceRecord, FinancialTransaction, Event } from '../types';
 import { useExport } from '../hooks/useExport';
+import { useApp } from '../context/AppContext';
 
 interface DashboardProps {
   members: Member[];
@@ -36,6 +37,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions, events, onQuickAction, onViewMember }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState('month');
   const { exportToCSV, exportToPDF, exporting } = useExport();
+  const { formatCurrency, t, state, sendNotification } = useApp();
   
   const activeMembers = members.filter(m => m.membershipStatus === 'Active').length;
   const totalMembers = members.length;
@@ -92,58 +94,124 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
 
   // Export functions
   const handleExportMembers = () => {
+    sendNotification({
+      type: 'info',
+      title: t('exportStarted') || 'Export Started',
+      message: t('exportingMembers') || 'Exporting member data...',
+      userId: 'system',
+      priority: 'low',
+      category: 'export',
+      read: false
+    });
+
     const exportData = members.map(member => ({
-      'First Name': member.firstName,
-      'Last Name': member.lastName,
-      'Email': member.email,
-      'Phone': member.phone,
-      'Status': member.membershipStatus,
-      'Join Date': member.joinDate,
-      'Campus': member.campus,
-      'Ministry': member.ministry.join(', ')
+      [t('firstName')]: member.firstName,
+      [t('lastName')]: member.lastName,
+      [t('email')]: member.email,
+      [t('phone')]: member.phone,
+      [t('status')]: member.membershipStatus,
+      [t('joinDate')]: member.joinDate,
+      [t('campus')]: member.campus,
+      [t('ministry')]: member.ministry.join(', ')
     }));
-    exportToCSV(exportData, 'church_members');
+    
+    const success = exportToCSV(exportData, 'church_members');
+    if (success) {
+      sendNotification({
+        type: 'success',
+        title: t('exportSuccess'),
+        message: t('membersExported') || 'Member data exported successfully',
+        userId: 'system',
+        priority: 'low',
+        category: 'export',
+        read: false
+      });
+    }
   };
 
   const handleExportFinancials = () => {
+    sendNotification({
+      type: 'info',
+      title: t('exportStarted') || 'Export Started',
+      message: t('exportingFinancials') || 'Exporting financial data...',
+      userId: 'system',
+      priority: 'low',
+      category: 'export',
+      read: false
+    });
+
     const exportData = transactions.map(transaction => ({
-      'Date': transaction.date,
-      'Type': transaction.type,
-      'Category': transaction.category,
-      'Amount': transaction.amount,
-      'Description': transaction.description,
-      'Payment Method': transaction.paymentMethod,
-      'Member': transaction.memberName || '',
-      'Campus': transaction.campus
+      [t('date')]: transaction.date,
+      [t('type')]: transaction.type,
+      [t('category')]: transaction.category,
+      [t('amount')]: formatCurrency(transaction.amount),
+      [t('description')]: transaction.description,
+      [t('paymentMethod') || 'Payment Method']: transaction.paymentMethod,
+      [t('member') || 'Member']: transaction.memberName || '',
+      [t('campus')]: transaction.campus
     }));
-    exportToCSV(exportData, 'financial_transactions');
+    
+    const success = exportToCSV(exportData, 'financial_transactions');
+    if (success) {
+      sendNotification({
+        type: 'success',
+        title: t('exportSuccess'),
+        message: t('financialsExported') || 'Financial data exported successfully',
+        userId: 'system',
+        priority: 'low',
+        category: 'export',
+        read: false
+      });
+    }
   };
 
   const handleExportAttendance = () => {
+    sendNotification({
+      type: 'info',
+      title: t('exportStarted') || 'Export Started',
+      message: t('exportingAttendance') || 'Exporting attendance data...',
+      userId: 'system',
+      priority: 'low',
+      category: 'export',
+      read: false
+    });
+
     const exportData = attendance.map(record => ({
-      'Date': record.date,
-      'Member': record.memberName,
-      'Service': record.service,
-      'Present': record.present ? 'Yes' : 'No',
-      'Campus': record.campus
+      [t('date')]: record.date,
+      [t('member') || 'Member']: record.memberName,
+      [t('service') || 'Service']: record.service,
+      [t('present') || 'Present']: record.present ? t('yes') || 'Yes' : t('no') || 'No',
+      [t('campus')]: record.campus
     }));
-    exportToCSV(exportData, 'attendance_records');
+    
+    const success = exportToCSV(exportData, 'attendance_records');
+    if (success) {
+      sendNotification({
+        type: 'success',
+        title: t('exportSuccess'),
+        message: t('attendanceExported') || 'Attendance data exported successfully',
+        userId: 'system',
+        priority: 'low',
+        category: 'export',
+        read: false
+      });
+    }
   };
   const stats = [
     {
-      label: 'Total Members',
+      label: t('totalMembers'),
       value: totalMembers,
-      subValue: `${activeMembers} Active`,
+      subValue: `${activeMembers} ${t('active')}`,
       icon: Users,
       color: 'blue',
-      trend: `+${newMembers} this month`,
+      trend: `+${newMembers} ${t('thisMonth') || 'this month'}`,
       trendPositive: true,
       action: () => onQuickAction('members')
     },
     {
-      label: 'Monthly Income',
-      value: `$${monthlyIncome.toLocaleString()}`,
-      subValue: `Net: $${(monthlyIncome - monthlyExpenses).toLocaleString()}`,
+      label: t('monthlyIncome'),
+      value: formatCurrency(monthlyIncome),
+      subValue: `${t('net') || 'Net'}: ${formatCurrency(monthlyIncome - monthlyExpenses)}`,
       icon: DollarSign,
       color: 'green',
       trend: monthlyIncome > monthlyExpenses ? `+${Math.round(((monthlyIncome - monthlyExpenses) / monthlyExpenses) * 100)}%` : `-${Math.round(((monthlyExpenses - monthlyIncome) / monthlyIncome) * 100)}%`,
@@ -151,22 +219,22 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
       action: () => onQuickAction('finance')
     },
     {
-      label: 'Weekly Attendance',
+      label: t('weeklyAttendance'),
       value: `${averageAttendance}%`,
-      subValue: `${recentAttendance.filter(a => a.present).length} Present`,
+      subValue: `${recentAttendance.filter(a => a.present).length} ${t('present') || 'Present'}`,
       icon: UserCheck,
       color: 'purple',
-      trend: '+5% from last week',
+      trend: `+5% ${t('fromLastWeek') || 'from last week'}`,
       trendPositive: true,
       action: () => onQuickAction('attendance')
     },
     {
-      label: 'Upcoming Events',
+      label: t('upcomingEvents'),
       value: upcomingEvents.length,
-      subValue: 'Next 30 days',
+      subValue: t('next30Days') || 'Next 30 days',
       icon: Calendar,
       color: 'orange',
-      trend: 'View all events',
+      trend: t('viewAllEvents') || 'View all events',
       trendPositive: true,
       action: () => onQuickAction('events')
     }
@@ -174,43 +242,43 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
 
   const quickActions = [
     {
-      title: 'Add New Member',
-      description: 'Register a new church member',
+      title: t('addNewMember'),
+      description: t('registerNewMember') || 'Register a new church member',
       icon: Users,
       color: 'blue',
       action: () => onQuickAction('members')
     },
     {
-      title: 'Record Attendance',
-      description: 'Mark attendance for services',
+      title: t('recordAttendance'),
+      description: t('markAttendanceServices') || 'Mark attendance for services',
       icon: UserCheck,
       color: 'green',
       action: () => onQuickAction('attendance')
     },
     {
-      title: 'Add Transaction',
-      description: 'Record income or expense',
+      title: t('addTransaction'),
+      description: t('recordIncomeExpense') || 'Record income or expense',
       icon: DollarSign,
       color: 'yellow',
       action: () => onQuickAction('finance')
     },
     {
-      title: 'Schedule Event',
-      description: 'Create a new church event',
+      title: t('scheduleEvent'),
+      description: t('createNewEvent') || 'Create a new church event',
       icon: Calendar,
       color: 'purple',
       action: () => onQuickAction('events')
     },
     {
-      title: 'Send Communication',
-      description: 'Send email or SMS to members',
+      title: t('sendCommunication'),
+      description: t('sendEmailSMS') || 'Send email or SMS to members',
       icon: Send,
       color: 'indigo',
       action: () => onQuickAction('communication')
     },
     {
-      title: 'Generate Report',
-      description: 'Create detailed reports',
+      title: t('generateReport'),
+      description: t('createDetailedReports') || 'Create detailed reports',
       icon: FileText,
       color: 'gray',
       action: () => onQuickAction('reports')
@@ -223,9 +291,9 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Welcome to ChurchHub</h1>
+            <h1 className="text-3xl font-bold mb-2">{t('welcome')}</h1>
             <p className="text-blue-100 text-lg">
-              Today is {new Date().toLocaleDateString('en-US', { 
+              {t('todayIs') || 'Today is'} {new Date().toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage), { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
@@ -235,8 +303,8 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
           </div>
           <div className="flex items-center space-x-4">
             <div className="text-right">
-            <p className="text-blue-100">Last updated</p>
-            <p className="text-xl font-semibold">{new Date().toLocaleTimeString()}</p>
+            <p className="text-blue-100">{t('lastUpdated') || 'Last updated'}</p>
+            <p className="text-xl font-semibold">{new Date().toLocaleTimeString(languageService.getLanguageLocale(state.currentLanguage))}</p>
             </div>
             <div className="flex space-x-2">
               <button
@@ -245,7 +313,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                 className="flex items-center space-x-2 bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-colors disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
-                <span>Export Members</span>
+                <span>{t('exportMembers') || 'Export Members'}</span>
               </button>
               <button
                 onClick={handleExportFinancials}
@@ -253,7 +321,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                 className="flex items-center space-x-2 bg-white bg-opacity-20 text-white px-4 py-2 rounded-lg hover:bg-opacity-30 transition-colors disabled:opacity-50"
               >
                 <Download className="h-4 w-4" />
-                <span>Export Financials</span>
+                <span>{t('exportFinancials') || 'Export Financials'}</span>
               </button>
             </div>
           </div>
@@ -295,12 +363,12 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-2 mb-4">
             <Bell className="h-5 w-5 text-orange-500" />
-            <h3 className="text-lg font-semibold text-gray-900">Alerts & Reminders</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('alertsReminders') || 'Alerts & Reminders'}</h3>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {birthdaysThisWeek.length > 0 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-medium text-yellow-800 mb-2">🎂 Birthdays This Week</h4>
+                <h4 className="font-medium text-yellow-800 mb-2">🎂 {t('birthdaysThisWeek') || 'Birthdays This Week'}</h4>
                 <div className="space-y-2">
                   {birthdaysThisWeek.slice(0, 3).map(member => (
                     <div 
@@ -310,12 +378,12 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                     >
                       <span className="text-yellow-700">{member.firstName} {member.lastName}</span>
                       <span className="text-yellow-600 text-sm">
-                        {new Date(member.dateOfBirth).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {new Date(member.dateOfBirth).toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage), { month: 'short', day: 'numeric' })}
                       </span>
                     </div>
                   ))}
                   {birthdaysThisWeek.length > 3 && (
-                    <p className="text-yellow-600 text-sm">+{birthdaysThisWeek.length - 3} more</p>
+                    <p className="text-yellow-600 text-sm">+{birthdaysThisWeek.length - 3} {t('more') || 'more'}</p>
                   )}
                 </div>
               </div>
@@ -323,13 +391,13 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
             
             {followUpNeeded > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h4 className="font-medium text-red-800 mb-2">📞 Follow-up Needed</h4>
-                <p className="text-red-700">{followUpNeeded} members need follow-up</p>
+                <h4 className="font-medium text-red-800 mb-2">📞 {t('followUpNeeded') || 'Follow-up Needed'}</h4>
+                <p className="text-red-700">{followUpNeeded} {t('membersNeedFollowUp') || 'members need follow-up'}</p>
                 <button 
                   onClick={() => onQuickAction('members')}
                   className="mt-2 text-red-600 hover:text-red-800 text-sm font-medium"
                 >
-                  View Details →
+                  {t('viewDetails') || 'View Details'} →
                 </button>
               </div>
             )}
@@ -339,7 +407,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Quick Actions</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('quickActions')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {quickActions.map((action, index) => {
             const Icon = action.icon;
@@ -355,7 +423,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                 <h4 className="font-semibold text-gray-900 mb-2">{action.title}</h4>
                 <p className="text-sm text-gray-600 mb-3">{action.description}</p>
                 <div className="flex items-center text-sm font-medium text-blue-600 group-hover:text-blue-700">
-                  <span>Get started</span>
+                  <span>{t('getStarted') || 'Get started'}</span>
                   <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
@@ -370,12 +438,12 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
         <div className="lg:col-span-1">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 h-fit">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Upcoming Events</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('upcomingEvents')}</h3>
               <button 
                 onClick={() => onQuickAction('events')}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
-                View All
+                {t('viewAll') || 'View All'}
               </button>
             </div>
             <div className="space-y-4">
@@ -394,7 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                         <div className="space-y-1 mt-2">
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Calendar className="h-4 w-4" />
-                            <span>{new Date(event.date).toLocaleDateString()}</span>
+                            <span>{new Date(event.date).toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage))}</span>
                           </div>
                           <div className="flex items-center space-x-2 text-sm text-gray-600">
                             <Clock className="h-4 w-4" />
@@ -421,13 +489,13 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p className="font-medium">No upcoming events</p>
-                  <p className="text-sm">Schedule your first event</p>
+                  <p className="font-medium">{t('noUpcomingEvents') || 'No upcoming events'}</p>
+                  <p className="text-sm">{t('scheduleFirstEvent') || 'Schedule your first event'}</p>
                   <button 
                     onClick={() => onQuickAction('events')}
                     className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
                   >
-                    Create Event
+                    {t('createEvent') || 'Create Event'}
                   </button>
                 </div>
               )}
@@ -440,7 +508,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
           {/* Recent Financial Activity */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-gray-900">Recent Financial Activity</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('recentFinancialActivity') || 'Recent Financial Activity'}</h3>
               <div className="flex space-x-2">
                 <button
                   onClick={handleExportFinancials}
@@ -448,13 +516,13 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                   className="flex items-center space-x-2 text-green-600 hover:text-green-700 text-sm font-medium disabled:opacity-50"
                 >
                   <Download className="h-4 w-4" />
-                  <span>Export</span>
+                  <span>{t('export')}</span>
                 </button>
                 <button 
                 onClick={() => onQuickAction('finance')}
                 className="text-green-600 hover:text-green-700 text-sm font-medium"
                 >
-                View All
+                {t('viewAll') || 'View All'}
                 </button>
               </div>
             </div>
@@ -479,7 +547,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                       </p>
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span>{transaction.category}</span>
-                        <span>{new Date(transaction.date).toLocaleDateString()}</span>
+                        <span>{new Date(transaction.date).toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage))}</span>
                         <span>{transaction.paymentMethod}</span>
                       </div>
                     </div>
@@ -488,7 +556,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                     <p className={`text-lg font-bold ${
                       transaction.type === 'Income' ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      {transaction.type === 'Income' ? '+' : '-'}${transaction.amount.toLocaleString()}
+                      {transaction.type === 'Income' ? '+' : '-'}{formatCurrency(transaction.amount)}
                     </p>
                     <p className="text-sm text-gray-500">{transaction.type}</p>
                   </div>
@@ -499,10 +567,10 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
 
           {/* Member Insights */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Member Insights</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">{t('memberInsights') || 'Member Insights'}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Recent Additions</h4>
+                <h4 className="font-medium text-gray-900 mb-3">{t('recentAdditions') || 'Recent Additions'}</h4>
                 <div className="space-y-3">
                   {members
                     .filter(m => {
@@ -522,16 +590,16 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-gray-900">{member.firstName} {member.lastName}</p>
-                          <p className="text-sm text-gray-500">Joined {new Date(member.joinDate).toLocaleDateString()}</p>
+                          <p className="text-sm text-gray-500">{t('joined') || 'Joined'} {new Date(member.joinDate).toLocaleDateString(languageService.getLanguageLocale(state.currentLanguage))}</p>
                         </div>
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">New</span>
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">{t('new') || 'New'}</span>
                       </div>
                     ))}
                 </div>
               </div>
 
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">Ministry Leaders</h4>
+                <h4 className="font-medium text-gray-900 mb-3">{t('ministryLeaders') || 'Ministry Leaders'}</h4>
                 <div className="space-y-3">
                   {members
                     .filter(m => m.role === 'leader' || m.role === 'pastor')
@@ -548,7 +616,7 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-purple-600">{member.ministry.length}</p>
-                          <p className="text-xs text-gray-500">ministries</p>
+                          <p className="text-xs text-gray-500">{t('ministries')}</p>
                         </div>
                       </div>
                     ))}
@@ -562,10 +630,10 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
       {/* Activity Feed */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('recentActivity')}</h3>
           <div className="flex items-center space-x-2">
             <Activity className="h-5 w-5 text-gray-400" />
-            <span className="text-sm text-gray-500">Live updates</span>
+            <span className="text-sm text-gray-500">{t('liveUpdates') || 'Live updates'}</span>
           </div>
         </div>
         
@@ -575,9 +643,9 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
             <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
             <div className="flex-1">
               <p className="text-gray-900">
-                <span className="font-medium">John Smith</span> was added to Worship Team
+                <span className="font-medium">John Smith</span> {t('wasAddedToWorshipTeam') || 'was added to Worship Team'}
               </p>
-              <p className="text-sm text-gray-500">2 hours ago</p>
+              <p className="text-sm text-gray-500">{t('hoursAgo', '2') || '2 hours ago'}</p>
             </div>
           </div>
           
@@ -585,9 +653,9 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
             <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
             <div className="flex-1">
               <p className="text-gray-900">
-                <span className="font-medium">Sunday Morning Service</span> attendance recorded
+                <span className="font-medium">{t('sundayMorningService') || 'Sunday Morning Service'}</span> {t('attendanceRecorded') || 'attendance recorded'}
               </p>
-              <p className="text-sm text-gray-500">1 day ago</p>
+              <p className="text-sm text-gray-500">{t('dayAgo', '1') || '1 day ago'}</p>
             </div>
           </div>
           
@@ -595,9 +663,9 @@ const Dashboard: React.FC<DashboardProps> = ({ members, attendance, transactions
             <div className="w-2 h-2 bg-yellow-500 rounded-full mt-2"></div>
             <div className="flex-1">
               <p className="text-gray-900">
-                <span className="font-medium">$2,500</span> tithe collection processed
+                <span className="font-medium">{formatCurrency(2500)}</span> {t('titheCollectionProcessed') || 'tithe collection processed'}
               </p>
-              <p className="text-sm text-gray-500">2 days ago</p>
+              <p className="text-sm text-gray-500">{t('daysAgo', '2') || '2 days ago'}</p>
             </div>
           </div>
         </div>
