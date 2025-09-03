@@ -109,25 +109,9 @@ const Members: React.FC<MembersProps> = ({ members, ministries, onAddMember, onU
 
   // Export functions for members
   const exportMembersCSV = () => {
-    const exportData = filteredMembers.map(member => ({
-      [t('firstName') || 'First Name']: member.firstName,
-      [t('lastName') || 'Last Name']: member.lastName,
-      [t('email') || 'Email']: member.email,
-      [t('phone') || 'Phone']: member.phone,
-      [t('address') || 'Address']: member.address,
-      [t('dateOfBirth') || 'Date of Birth']: member.dateOfBirth,
-      [t('membershipStatus') || 'Status']: member.membershipStatus,
-      [t('joinDate') || 'Join Date']: member.joinDate,
-      [t('ministry') || 'Ministry']: member.ministry.join(', '),
-      [t('campus') || 'Campus']: member.campus,
-      [t('role') || 'Role']: member.role,
-      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)),
-      'Emergency Contact': member.emergencyContact.name,
-      'Emergency Phone': member.emergencyContact.phone,
-      'Emergency Relationship': member.emergencyContact.relationship
-    }));
+    // Use the Kenyan-specific export function
+    const success = exportMembersKenyan(filteredMembers);
     
-    const success = exportToCSV(exportData, 'church_members', t('membershipReport') || 'Membership Report');
     if (success) {
       sendNotification({
         type: 'success',
@@ -143,22 +127,29 @@ const Members: React.FC<MembersProps> = ({ members, ministries, onAddMember, onU
 
   const exportMembersPDF = () => {
     const exportData = filteredMembers.map(member => ({
-      'Name': `${member.firstName} ${member.lastName}`,
-      'Email': member.email,
-      'Phone': member.phone,
-      'Status': member.membershipStatus,
-      'Join Date': new Date(member.joinDate).toLocaleDateString('en-KE'),
+      'Full Name': `${member.firstName} ${member.lastName}`,
+      'ID Number': member.idNumber || 'Not Provided',
+      'Phone Number': member.phone,
+      'Email Address': member.email,
+      'County': member.county || 'Not Specified',
+      'Membership Status': member.membershipStatus,
+      'Join Date': member.joinDate,
       'Ministry': member.ministry.join(', '),
       'Campus': member.campus,
-      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)),
+      'Marital Status': member.maritalStatus || 'Not Specified',
+      'Occupation': member.occupation || 'Not Specified',
+      'Emergency Contact': member.emergencyContact.name,
+      'Emergency Phone': member.emergencyContact.phone,
+      'Language Preference': member.preferences.communicationLanguage
     }));
     
-    const success = exportToPDF(exportData, 'church_members_report', t('membershipReport') || 'Membership Report', 'membership');
+    const success = exportToPDF(exportData, 'kenyan_church_members_report', 'Church Members Report - Kenya', 'membership');
     if (success) {
       sendNotification({
         type: 'success',
         title: t('exportSuccess') || 'Export Successful',
-        message: `Membership report exported to PDF`,
+        message: `Kenyan membership report exported to PDF`,
         userId: 'system',
         priority: 'low',
         category: 'export',
