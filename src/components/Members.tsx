@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Search, Plus, Edit, Trash2, Mail, Phone, MapPin, Calendar, Eye, Filter, Users, Heart, Award } from 'lucide-react';
 import { Member, Ministry } from '../types';
+import { useExport } from '../hooks/useExport';
+import { useApp } from '../context/AppContext';
 
 interface MembersProps {
   members: Member[];
@@ -19,6 +21,8 @@ const Members: React.FC<MembersProps> = ({ members, ministries, onAddMember, onU
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [hoveredMember, setHoveredMember] = useState<string | null>(null);
+  const { exportToCSV, exportToPDF, exportToExcel, exporting } = useExport();
+  const { t, sendNotification } = useApp();
 
   const [newMember, setNewMember] = useState<Omit<Member, 'id'>>({
     firstName: '',
@@ -79,12 +83,89 @@ const Members: React.FC<MembersProps> = ({ members, ministries, onAddMember, onU
     if (editingMember) {
       onUpdateMember(editingMember.id, memberData);
       setEditingMember(null);
+      sendNotification({
+        type: 'success',
+        title: t('memberUpdated') || 'Member Updated',
+        message: `${memberData.firstName} ${memberData.lastName} has been updated successfully`,
+        userId: 'system',
+        priority: 'low',
+        category: 'members',
+        read: false
+      });
     } else {
       onAddMember(memberData);
+      sendNotification({
+        type: 'success',
+        title: t('memberAdded') || 'Member Added',
+        message: `${memberData.firstName} ${memberData.lastName} has been added to the system`,
+        userId: 'system',
+        priority: 'medium',
+        category: 'members',
+        read: false
+      });
     }
     resetForm();
   };
 
+  // Export functions for members
+  const exportMembersCSV = () => {
+    const exportData = filteredMembers.map(member => ({
+      [t('firstName') || 'First Name']: member.firstName,
+      [t('lastName') || 'Last Name']: member.lastName,
+      [t('email') || 'Email']: member.email,
+      [t('phone') || 'Phone']: member.phone,
+      [t('address') || 'Address']: member.address,
+      [t('dateOfBirth') || 'Date of Birth']: member.dateOfBirth,
+      [t('membershipStatus') || 'Status']: member.membershipStatus,
+      [t('joinDate') || 'Join Date']: member.joinDate,
+      [t('ministry') || 'Ministry']: member.ministry.join(', '),
+      [t('campus') || 'Campus']: member.campus,
+      [t('role') || 'Role']: member.role,
+      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)),
+      'Emergency Contact': member.emergencyContact.name,
+      'Emergency Phone': member.emergencyContact.phone,
+      'Emergency Relationship': member.emergencyContact.relationship
+    }));
+    
+    const success = exportToCSV(exportData, 'church_members', t('membershipReport') || 'Membership Report');
+    if (success) {
+      sendNotification({
+        type: 'success',
+        title: t('exportSuccess') || 'Export Successful',
+        message: `${filteredMembers.length} members exported to CSV`,
+        userId: 'system',
+        priority: 'low',
+        category: 'export',
+        read: false
+      });
+    }
+  };
+
+  const exportMembersPDF = () => {
+    const exportData = filteredMembers.map(member => ({
+      'Name': `${member.firstName} ${member.lastName}`,
+      'Email': member.email,
+      'Phone': member.phone,
+      'Status': member.membershipStatus,
+      'Join Date': new Date(member.joinDate).toLocaleDateString('en-KE'),
+      'Ministry': member.ministry.join(', '),
+      'Campus': member.campus,
+      'Age': Math.floor((new Date().getTime() - new Date(member.dateOfBirth).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+    }));
+    
+    const success = exportToPDF(exportData, 'church_members_report', t('membershipReport') || 'Membership Report', 'membership');
+    if (success) {
+      sendNotification({
+        type: 'success',
+        title: t('exportSuccess') || 'Export Successful',
+        message: `Membership report exported to PDF`,
+        userId: 'system',
+        priority: 'low',
+        category: 'export',
+        read: false
+      });
+    }
+  };
   const resetForm = () => {
     setNewMember({
       firstName: '',
@@ -178,13 +259,29 @@ const Members: React.FC<MembersProps> = ({ members, ministries, onAddMember, onU
           <h2 className="text-2xl font-bold text-gray-900">Member Management</h2>
           <p className="text-gray-600 mt-1">Manage church members, families, and relationships</p>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg hover:scale-105"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Add Member</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={exportMembersCSV}
+            disabled={exporting}
+            className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <span>{exporting ? t('exporting') || 'Exporting...' : 'CSV'}</span>
+          </button>
+          <button
+            onClick={exportMembersPDF}
+            disabled={exporting}
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            <span>{exporting ? t('exporting') || 'Exporting...' : 'PDF'}</span>
+          </button>
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 hover:shadow-lg hover:scale-105"
+          >
+            <Plus className="h-4 w-4" />
+            <span>{t('addMember') || 'Add Member'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
