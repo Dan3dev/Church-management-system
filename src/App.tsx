@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
-import { AppProvider } from './context/AppContext';
+import { AppProvider, useApp } from './context/AppContext';
 import LandingPage from './components/landing/LandingPage';
 import LoginForm from './components/auth/LoginForm';
 import Sidebar from './components/Layout/Sidebar';
@@ -16,6 +16,31 @@ import Settings from './components/settings/Settings';
 import ProfilePage from './components/profile/ProfilePage';
 import { mockMembers, mockAttendance, mockTransactions, mockEvents } from './data/mockData';
 import { Member } from './types';
+
+function NotificationCenterWrapper() {
+  const { state, dispatch } = useApp();
+
+  const handleMarkAsRead = (id: string) => {
+    dispatch({ type: 'MARK_NOTIFICATION_READ', payload: id });
+  };
+
+  const handleRemove = (id: string) => {
+    dispatch({ type: 'REMOVE_NOTIFICATION', payload: id });
+  };
+
+  const handleClearAll = () => {
+    dispatch({ type: 'CLEAR_ALL_NOTIFICATIONS' });
+  };
+
+  return (
+    <NotificationCenter
+      notifications={state.notifications}
+      onMarkAsRead={handleMarkAsRead}
+      onRemove={handleRemove}
+      onClearAll={handleClearAll}
+    />
+  );
+}
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -98,9 +123,14 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+      <Sidebar
+        activeTab={currentView}
+        onTabChange={setCurrentView}
+        isCollapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <NotificationCenter />
+        <NotificationCenterWrapper />
         <main className="flex-1 overflow-y-auto p-8">
           {renderContent()}
         </main>
