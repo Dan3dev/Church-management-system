@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Users, 
-  Calendar, 
-  DollarSign, 
-  TrendingUp, 
-  UserCheck, 
-  AlertCircle, 
+import {
+  Users,
+  Calendar,
+  DollarSign,
+  TrendingUp,
+  UserCheck,
+  AlertCircle,
   Heart,
   Clock,
   MapPin,
@@ -24,6 +24,7 @@ import {
 import { Member, AttendanceRecord, FinancialTransaction, Event } from '../types';
 import { useExport } from '../hooks/useExport';
 import { useApp } from '../context/AppContext';
+import { languageService } from '../services/languageService';
 
 interface DashboardProps {
   members: Member[];
