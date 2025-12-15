@@ -14,6 +14,22 @@ import Events from './components/Events';
 import Reports from './components/Reports';
 import Settings from './components/settings/Settings';
 import ProfilePage from './components/profile/ProfilePage';
+import FamilyManagement from './components/families/FamilyManagement';
+import GivingManagement from './components/giving/GivingManagement';
+import AccountManagement from './components/accounts/AccountManagement';
+import VolunteerScheduling from './components/volunteers/VolunteerScheduling';
+import MinistryManagement from './components/ministries/MinistryManagement';
+import CommunicationCenter from './components/communication/CommunicationCenter';
+import ChildCheckIn from './components/children/ChildCheckIn';
+import SermonManagement from './components/sermons/SermonManagement';
+import SmallGroupManagement from './components/smallgroups/SmallGroupManagement';
+import CampusManagement from './components/campus/CampusManagement';
+import DocumentManager from './components/documents/DocumentManager';
+import UserManagement from './components/users/UserManagement';
+import AIInsights from './components/ai/AIInsights';
+import IntegrationHub from './components/integrations/IntegrationHub';
+import LanguageManager from './components/localization/LanguageManager';
+import CurrencyManager from './components/currency/CurrencyManager';
 import { mockMembers, mockAttendance, mockTransactions, mockEvents } from './data/mockData';
 import { Member } from './types';
 
@@ -97,45 +113,45 @@ function AppContent() {
       case 'members':
         return <Members onViewMember={handleViewMember} />;
       case 'families':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Family Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <FamilyManagement />;
       case 'attendance':
         return <Attendance />;
       case 'giving':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Giving Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <GivingManagement />;
       case 'finance':
         return <Finance />;
       case 'accounts':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Account Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <AccountManagement />;
       case 'events':
         return <Events />;
       case 'volunteers':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Volunteer Scheduling</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <VolunteerScheduling />;
       case 'ministries':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Ministry Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <MinistryManagement />;
       case 'communication':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Communication Center</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <CommunicationCenter />;
       case 'children':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Children Check-In</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <ChildCheckIn />;
       case 'sermons':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Sermon Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <SermonManagement />;
       case 'smallgroups':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Small Group Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <SmallGroupManagement />;
       case 'campuses':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Campus Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <CampusManagement />;
       case 'documents':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Document Manager</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <DocumentManager />;
       case 'reports':
         return <Reports />;
       case 'users':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">User Management</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <UserManagement />;
       case 'ai-insights':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">AI Insights</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <AIInsights />;
       case 'integrations':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Integration Hub</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <IntegrationHub />;
       case 'languages':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Language Manager</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <LanguageManager />;
       case 'currencies':
-        return <div className="p-6 bg-white rounded-lg shadow"><h2 className="text-2xl font-bold text-gray-900">Currency Manager</h2><p className="text-gray-600 mt-2">Coming soon</p></div>;
+        return <CurrencyManager />;
       case 'settings':
         return <Settings />;
       case 'profile':
